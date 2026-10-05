@@ -28,6 +28,7 @@ bash tests/run.sh                                   # must be green before every
 shellcheck skills/auditar-repo/scripts/recon.sh tests/*.sh tests/eval/*.sh tests/stubs/*
 bash tests/make-trap-repo.sh /tmp/inventory-sync    # then audit it; see tests/eval/README.md
 bash tests/eval/check-report.sh report.md           # automatic part of the eval
+bash skills/auditar-repo/scripts/recon.sh --json .  # recon pack as JSON
 ```
 
 CI (`.github/workflows/ci.yml`) runs shellcheck on Linux and the tests on Linux **and
@@ -42,7 +43,9 @@ macOS**.
 2. **Tri-state output contract.** Every recon section ends with
    `STATUS: ok | failed | skipped (<reason>)`. An empty section must never be readable as
    a clean result. `SKILL.md` (Step 3, Step 4f) only lets `ok` evidence back confidence
-   **Alta**. A new section needs a status line *and* a test.
+   **Alta**. A new section needs a status line *and* a test. `--json` is derived from
+   the text pack (`to_json`), so keep the `== NAME ==` / `-- check --` / `STATUS:` line
+   formats; a section without `STATUS` comes out as `failed` in JSON.
 3. **Exit codes are not verdicts.** `npm audit`, `pip-audit` and `cargo audit` exit
    non-zero when they *find* vulnerabilities. Route new auditors through `run_audit()`.
 4. **No secret value ever reaches the output.** Anything that prints lines from the
@@ -78,7 +81,6 @@ macOS**.
 - Commit messages in Spanish, imperative mood. Fixes from an audit use
   `fix(QW1): …` / `refactor(CM1): …` and cite the audited commit in the body.
 - One change per commit. Never push or open a PR without the maintainer's explicit OK.
-- Known open gaps (not bugs to "fix" silently): there is no `--json` output yet. Recon
-  scans manifests to depth 3 and agent artifacts to depth 4 (declared in their `STATUS`
-  lines); dependency auditors run at the root only, and nested manifests are reported as
-  `skipped`.
+- Known limits (declared, not bugs to "fix" silently): recon scans manifests to depth 3
+  and agent artifacts to depth 4 (stated in their `STATUS` lines); dependency auditors run
+  at the root only, and nested manifests are reported as `skipped`.
