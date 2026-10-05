@@ -12,7 +12,7 @@ the language-neutral rules (section order, IDs, sorting, score anchors) live in 
 | Static mode | Commit `n/a — static mode` · scores `(estimated, not executed)` |
 | Mandatory creative item | Non-Obvious Recommendation |
 | Clone confirmation (Step 2) | "I'm going to clone `<REPO_URL>` into a temporary directory to audit its code. Shall we proceed?" |
-| Next steps (Step 9) | Dig deeper · Run a fix · Issue template · AI-readiness · Comparison · Cleanup |
+| Next steps (Step 9) | Go deeper · Run a fix · Issue template · AI-readiness · Comparison · Cleanup |
 | Engine wording (Model-Naming) | "the internal reasoning protocol", "the auditor" |
 
 ## Template

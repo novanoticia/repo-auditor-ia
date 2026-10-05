@@ -10,7 +10,7 @@ toque `SKILL.md`, `references/` o `recon.sh`.
 ## Procedimiento
 
 1. Genera el trap repo:
-   ```bash
+   ```text
    bash tests/make-trap-repo.sh /tmp/inventory-sync
    ```
 2. En una sesión con el plugin instalado, pide la auditoría de esa ruta local
@@ -18,7 +18,7 @@ toque `SKILL.md`, `references/` o `recon.sh`.
    estándar*; repítela con `--lang en` y `--lang fr` si el cambio afecta a los idiomas) y guarda
    el informe completo en un fichero, p. ej. `report.md`.
 3. Comprueba automáticamente lo verificable:
-   ```bash
+   ```text
    bash tests/eval/check-report.sh report.md
    ```
 4. Revisa a mano la tabla de abajo (lo que un grep no puede juzgar).
