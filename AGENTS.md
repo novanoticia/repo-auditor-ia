@@ -24,7 +24,7 @@ tests/eval/                           eval of the protocol itself on the trap re
 ```bash
 bash tests/run.sh                                   # must be green before every commit
 shellcheck skills/auditar-repo/scripts/recon.sh tests/*.sh tests/eval/*.sh tests/stubs/*
-bash tests/make-trap-repo.sh /tmp/trap-repo         # then audit it; see tests/eval/README.md
+bash tests/make-trap-repo.sh /tmp/inventory-sync    # then audit it; see tests/eval/README.md
 bash tests/eval/check-report.sh report.md           # automatic part of the eval
 ```
 

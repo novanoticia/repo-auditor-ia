@@ -39,8 +39,8 @@ for key in '"apiKey"' 'GITHUB_TOKEN=' 'AWS_SECRET_ACCESS_KEY=' 'settings.py:1:to
   check "secret detected: $key" "$key"
 done
 # QW4 / F5 — no planted value ever leaks past its first 4 chars
-check_not "no planted value leaks (secrets + TODO samples)" 'PLANTED'
-check "values masked as FAKE***" 'FAKE\*\*\*'
+check_not "no planted value leaks (secrets + TODO samples)" 'Hx4mN8vR'
+check "values masked as q7Zr***" 'q7Zr\*\*\*'
 
 # QW1 / F1 — no lockfile => explicit skip, never an empty section
 check "npm without lockfile: skipped"     'npm audit needs a lockfile'
