@@ -89,6 +89,25 @@ HOT="$(section 'GIT HOTSPOTS')"
 if printf '%s\n' "$HOT" | grep -qE '^ *2 lib/helper\.py$'; then ok "renamed file keeps its history (2 lib/helper.py)"; else ko "renamed file keeps its history (2 lib/helper.py)"; fi
 if printf '%s\n' "$HOT" | grep -qE '^ *[0-9]+ helper\.py$'; then ko "old path not listed separately"; else ok "old path not listed separately"; fi
 
+# --json — same evidence as the text pack, machine-readable, tri-state per section
+TEXT_SECTIONS="$(printf '%s\n' "$OUT" | sed -n 's/^== \(.*\) ==$/\1/p' | grep -v '^END OF PACK$')"
+JOUT="$(PATH="$STUBS:$PATH" bash "$RECON" --json "$TRAP" 2>&1)"
+# jcheck <desc> <python boolean expr over d (parsed JSON) and ts (text section names)>
+jcheck() {
+  if printf '%s' "$JOUT" | TS="$TEXT_SECTIONS" python3 -c "
+import json, os, sys
+d = json.load(sys.stdin); ts = os.environ['TS'].split('\n')
+sys.exit(0 if ($2) else 1)" 2>/dev/null; then ok "$1"; else ko "$1"; fi
+}
+jcheck "--json: valid JSON"                       'True'
+jcheck "--json: schema id"                        'd["schema"] == "repo-auditor-ia/recon@1"'
+jcheck "--json: same sections as the text pack"   '[s["name"] for s in d["sections"]] == ts'
+jcheck "--json: every section is ok|skipped|failed" 'all(s["status"] in ("ok", "skipped", "failed") for s in d["sections"])'
+jcheck "--json: section status = worst of its STATUS lines" 'all(s["status"] == max((x["status"] for x in s["statuses"]), key=["ok","skipped","failed"].index) for s in d["sections"])'
+jcheck "--json: npm skip keeps its check name"    'any(x["check"] == "npm audit" and x["status"] == "skipped" for s in d["sections"] for x in s["statuses"])'
+jcheck "--json: summary counts every section"     'sum(d["summary"].values()) == len(d["sections"])'
+if printf '%s\n' "$JOUT" | grep -qF -f "$MARKERS"; then ko "--json: no planted value leaks"; else ok "--json: no planted value leaks"; fi
+
 # Read-only invariant — recon never modifies the audited repo
 if [ -z "$(git -C "$TRAP" status --porcelain)" ]; then ok "trap repo untouched"; else ko "trap repo untouched"; fi
 
@@ -118,6 +137,23 @@ MAN="$(section 'STACK MANIFESTS')"
 if printf '%s\n' "$MAN" | grep -q 'services/api/requirements\.txt'; then ok "nested manifest listed"; else ko "nested manifest listed"; fi
 if printf '%s\n' "$MAN" | grep -q 'node_modules'; then ko "vendored manifests excluded"; else ok "vendored manifests excluded"; fi
 check "nested manifest not audited => explicit skip" 'STATUS: skipped \(nested manifests not audited'
+
+echo "recon.sh --json — escaping"
+ESC="$WORK/esc"; mkdir -p "$ESC"
+printf '# TODO a\tb "q" \\ back\n' > "$ESC/x.sh"
+JOUT="$(bash "$RECON" --json "$ESC" 2>&1)"
+jcheck "--json: tabs, quotes and backslashes survive escaping" 'any("a\tb \"q\" \\ back" in l for s in d["sections"] for l in s["lines"])'
+JOUT="$(bash "$RECON" --json "$WORK/does-not-exist" 2>/dev/null)"; rc=$?
+if [ "$rc" -ne 0 ] && [ -z "$JOUT" ]; then ok "--json: bad dir => non-zero exit, no partial JSON"; else ko "--json: bad dir => non-zero exit, no partial JSON (rc=$rc)"; fi
+
+echo "recon.sh --json — fails closed"
+# Feed to_json a pack with a section lacking STATUS and an unknown status word:
+# neither may come out as "ok".
+TO_JSON="$WORK/to_json.sh"; sed -n '/^to_json() {/,/^}/p' "$RECON" > "$TO_JSON"
+JOUT="$(printf 'RECON EVIDENCE PACK x\ndir: /x\n\n== A ==\nsome line\n\n== B ==\nSTATUS: weird (x)\n\n== END OF PACK ==\n' \
+  | bash -c ". '$TO_JSON'; to_json" 2>&1)"
+jcheck "--json: section without STATUS => failed" 'd["sections"][0]["status"] == "failed"'
+jcheck "--json: unknown status word => failed"    'd["sections"][1]["status"] == "failed" and "unknown status" in d["sections"][1]["statuses"][0]["reason"]'
 
 echo "recon.sh — pyproject-only Python repo"
 PY="$WORK/py"; mkdir -p "$PY"; printf '[project]\nname = "x"\n' > "$PY/pyproject.toml"
