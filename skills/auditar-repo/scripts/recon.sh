@@ -78,23 +78,50 @@ hits=$(grep -rniE "$SECRET_PAT" $EXCL . 2>/dev/null | head -10 \
 if [ -n "$hits" ]; then echo "$hits"; else echo "no obvious hits (heuristic, not proof of absence)"; fi
 
 section "DEPENDENCY AUDIT (runs only if tooling is present)"
+# run_audit <label> <cmd...> — runs one auditor and ALWAYS prints a STATUS line,
+# so an empty section can never be mistaken for a clean result. A non-zero exit
+# is not a failure by itself: npm, pip-audit and cargo-audit all exit non-zero
+# when they *find* vulnerabilities.
+run_audit() {
+  label=$1; shift
+  echo "-- $label (tail 15) --"
+  out=$("$@" 2>&1); rc=$?
+  printf '%s\n' "$out" | tail -15
+  if [ "$rc" -eq 0 ]; then
+    echo "STATUS: ok (exit 0)"
+  elif printf '%s\n' "$out" | grep -qiE 'vulnerabilit' \
+       && ! printf '%s\n' "$out" | grep -qE '^npm (error|ERR!)'; then
+    echo "STATUS: ok (exit $rc: vulnerabilities reported)"
+  else
+    echo "STATUS: failed (exit $rc) — output above is NOT a clean result; declare it in <limites>"
+  fi
+}
 ran=0
 if [ -f package.json ] && command -v npm >/dev/null 2>&1; then
-  echo "-- npm audit (tail 15) --"
-  npm audit --omit=dev 2>/dev/null | tail -15 || echo "npm audit failed (needs lockfile/network)"
   ran=1
+  if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+    run_audit "npm audit" npm audit --omit=dev
+  else
+    echo "-- npm audit --"
+    echo "STATUS: skipped (no package-lock.json/npm-shrinkwrap.json — npm audit needs a lockfile)"
+  fi
 fi
 if { [ -f pyproject.toml ] || [ -f requirements.txt ]; } && command -v pip-audit >/dev/null 2>&1; then
-  echo "-- pip-audit (head 15) --"
-  pip-audit 2>/dev/null | head -15 || echo "pip-audit failed"
   ran=1
+  run_audit "pip-audit" pip-audit
 fi
 if [ -f Cargo.toml ] && command -v cargo-audit >/dev/null 2>&1; then
-  echo "-- cargo audit (head 15) --"
-  cargo audit 2>/dev/null | head -15 || echo "cargo audit failed"
   ran=1
+  if [ -f Cargo.lock ]; then
+    run_audit "cargo audit" cargo audit
+  else
+    echo "-- cargo audit --"
+    echo "STATUS: skipped (no Cargo.lock — cargo audit needs a lockfile)"
+  fi
 fi
-[ "$ran" -eq 0 ] && echo "no audit tooling available — declare it in <limites> and reason manually from manifests"
+if [ "$ran" -eq 0 ]; then
+  echo "STATUS: skipped (no audit tooling for the detected manifests — declare it in <limites> and reason manually from manifests)"
+fi
 
 printf '\n== END OF PACK ==\n'
 exit 0
