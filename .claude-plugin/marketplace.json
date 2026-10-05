@@ -1,0 +1,7 @@
+{
+  "name": "novanoticia",
+  "owner": { "name": "novanoticia" },
+  "plugins": [
+    { "name": "repo-auditor-ia", "source": "./" }
+  ]
+}

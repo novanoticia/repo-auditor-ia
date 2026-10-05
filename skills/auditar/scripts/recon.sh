@@ -72,7 +72,9 @@ echo "sample lines (top 10 — discard self-referential/doc mentions before coun
 grep -rniE '\b(TODO|FIXME|HACK|XXX)\b' $EXCL . 2>/dev/null | head -10
 
 section "SECRET HEURISTICS (candidates only — verify manually, Rule 6)"
-hits=$(grep -rniE "$SECRET_PAT" $EXCL . 2>/dev/null | head -10)
+# Values are masked (first 4 chars + ***) so secrets never land in the agent's context.
+hits=$(grep -rniE "$SECRET_PAT" $EXCL . 2>/dev/null | head -10 \
+  | sed -E "s/([:=][[:space:]]*[\"'])([A-Za-z0-9\/+_-]{4})[A-Za-z0-9\/+_-]*/\1\2***/g")
 if [ -n "$hits" ]; then echo "$hits"; else echo "no obvious hits (heuristic, not proof of absence)"; fi
 
 section "DEPENDENCY AUDIT (runs only if tooling is present)"
