@@ -11,7 +11,7 @@ No se fía de lo que promete el README del proyecto auditado: juzga lo que el c�
 - **Severidad y confianza por separado:** un hallazgo puede ser grave y, a la vez, de confianza baja, y el informe lo muestra así.
 - **Evidencia obligatoria:** un hallazgo sin `archivo:línea`, función o commit no entra en el informe.
 - **Informe reproducible:** secciones fijas, rúbricas de puntuación ancladas e IDs estables (F1, QW1, CM1…), de modo que dos auditorías del mismo commit se pueden comparar fila a fila.
-- **Reconocimiento determinista:** un script de solo lectura (`recon.sh`) recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (enmascarados) y auditoría de dependencias cuando hay herramientas disponibles. Cada sección termina en `STATUS: ok | failed | skipped`: una sección vacía nunca se confunde con un resultado limpio, y solo la evidencia `ok` admite confianza Alta.
+- **Reconocimiento determinista:** un script de solo lectura (`recon.sh`) recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (enmascarados) y auditoría de dependencias cuando hay herramientas disponibles. Cada sección termina en `STATUS: ok | failed | skipped`: una sección vacía nunca se confunde con un resultado limpio, y solo la evidencia `ok` admite confianza Alta. Con `--json` emite lo mismo en JSON, con el estado de cada sección, para compararlo o procesarlo con otras herramientas.
 - **Informe en tres idiomas:** español (por defecto), inglés o francés. Las etiquetas XML, los IDs, los emojis de severidad y las puntuaciones son iguales en los tres, así que un informe en inglés se puede comparar fila a fila con uno en español.
 - **Modo implementación (opcional):** si lo pides, aplica los arreglos que elijas por ID, uno a uno, verificando cada uno y con un commit por arreglo. Nunca hace push ni abre PR sin un permiso aparte.
 
@@ -66,6 +66,11 @@ tests/eval/                            eval del propio auditor sobre el trap rep
 Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
+
+**1.3.0** — `recon.sh --json`:
+
+- El reconocimiento puede salir en JSON (esquema `repo-auditor-ia/recon@1`): cada sección con su peor estado (`failed` > `skipped` > `ok`), cada línea `STATUS` con el nombre de su comprobación y las líneas de contenido.
+- Se genera a partir de la salida de texto, así que los dos formatos no pueden divergir, y falla cerrado: una sección sin `STATUS` sale como `failed`.
 
 **1.2.1** — reconocimiento más completo:
 

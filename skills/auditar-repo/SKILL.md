@@ -257,6 +257,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/auditar-repo/scripts/recon.sh" "<WORKDIR>/rep
 
 > If the path above was not substituted (the variable appears literally, e.g. outside
 > Claude Code), run `scripts/recon.sh` from the directory that contains this `SKILL.md`.
+> `recon.sh --json <dir>` emits the same pack as JSON (each section with its worst
+> `STATUS`), handy for comparing two runs programmatically; the text pack stays the default.
 
 *(Static mode: skip the script and collect the same items manually from what the user
 pastes.)*

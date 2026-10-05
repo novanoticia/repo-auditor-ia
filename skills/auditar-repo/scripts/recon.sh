@@ -8,10 +8,78 @@
 # "ok" means the check really ran; only "ok" evidence may be cited with
 # confidence Alta. "failed"/"skipped" must be declared in <limites> — an empty
 # section is never a clean result.
-# Usage: bash scripts/recon.sh [repo-dir]     (default: current directory)
+# Usage: bash scripts/recon.sh [--json] [repo-dir]   (default: current directory)
+#   --json  the same pack as JSON (schema repo-auditor-ia/recon@1): one object per
+#           section with its worst status (failed > skipped > ok), every STATUS line
+#           with its check name, and the content lines.
 
 # shellcheck disable=SC2086  # $EXCL is word-split into grep flags on purpose
 set -u
+
+# to_json — converts the text pack (stdin) to JSON. Built on the text output so the
+# two formats can never drift apart. Fails closed: a section without a STATUS line,
+# or with an unknown status word, is reported as "failed".
+to_json() {
+  LC_ALL=C tr -d '\000-\010\013\014\016-\037' | awk '
+  # JSON string escape, char by char: gsub replacement strings treat backslashes
+  # differently in BSD awk, gawk and mawk; plain string literals do not.
+  function q(s,   out, i, c) {
+    out = ""
+    for (i = 1; i <= length(s); i++) {
+      c = substr(s, i, 1)
+      if (c == "\\") c = "\\\\"; else if (c == "\"") c = "\\\""
+      else if (c == "\t") c = "\\t"; else if (c == "\r") c = "\\r"
+      out = out c
+    }
+    return "\"" out "\""
+  }
+  function rank(x) { return x == "failed" ? 2 : (x == "skipped" ? 1 : 0) }
+  function header() {
+    if (started) return
+    started = 1
+    printf "{\n  \"schema\": \"repo-auditor-ia/recon@1\",\n  \"generated_at\": %s,\n  \"dir\": %s,\n  \"sections\": [", q(gen), q(dir)
+  }
+  function flush(   i, worst) {
+    if (name == "") return
+    if (ns == 0) { ns = 1; sc[1] = name; ss[1] = "failed"; sr[1] = "(no STATUS line: treated as failed)" }
+    worst = "ok"
+    for (i = 1; i <= ns; i++) if (rank(ss[i]) > rank(worst)) worst = ss[i]
+    n[worst]++
+    printf "%s\n    {\"name\": %s, \"status\": %s, \"statuses\": [", (nsec++ ? "," : ""), q(name), q(worst)
+    for (i = 1; i <= ns; i++)
+      printf "%s{\"check\": %s, \"status\": %s, \"reason\": %s}", (i > 1 ? ", " : ""), q(sc[i]), q(ss[i]), q(sr[i])
+    printf "], \"lines\": ["
+    for (i = 1; i <= nl; i++) printf "%s%s", (i > 1 ? ", " : ""), q(ln[i])
+    printf "]}"
+    name = ""; ns = 0; nl = 0
+  }
+  NR == 1 && /^RECON EVIDENCE PACK/ { gen = $0; sub(/^RECON EVIDENCE PACK[^0-9]*/, "", gen); next }
+  /^dir: /                 { dir = substr($0, 6); next }
+  /^contract: /            { next }
+  /^== END OF PACK ==$/    { flush(); next }
+  /^== .* ==$/             { flush(); header(); name = substr($0, 4, length($0) - 6); check = name; next }
+  /^-- .* --$/             { check = substr($0, 4, length($0) - 6); sub(/ \(tail [0-9]+\)$/, "", check); next }
+  /^STATUS: /              {
+    s = substr($0, 9); st = s; sub(/ .*/, "", st)
+    r = (length(s) > length(st)) ? substr(s, length(st) + 2) : ""
+    if (st != "ok" && st != "skipped" && st != "failed") { r = "(unknown status \"" st "\") " r; st = "failed" }
+    ns++; sc[ns] = check; ss[ns] = st; sr[ns] = r; next
+  }
+  name != "" && $0 != ""   { ln[++nl] = $0 }
+  END {
+    flush(); header()
+    printf "\n  ],\n  \"summary\": {\"ok\": %d, \"skipped\": %d, \"failed\": %d}\n}\n", n["ok"], n["skipped"], n["failed"]
+  }'
+}
+
+# --json: run the text pack first (no partial JSON if it fails), then convert it.
+if [ "${1:-}" = "--json" ]; then
+  shift
+  pack=$(bash "$0" "$@") || exit $?
+  printf '%s\n' "$pack" | to_json
+  exit 0
+fi
+
 REPO="${1:-.}"
 cd "$REPO" 2>/dev/null || { echo "ERROR: cannot cd to '$REPO'" >&2; exit 1; }
 
@@ -41,7 +109,7 @@ mask_secrets() {
     while (match(tolower(rest), key)) {
       out = out substr(rest, 1, RSTART + RLENGTH - 1)
       rest = substr(rest, RSTART + RLENGTH)
-      if (match(rest, /^[^[:space:]\"'\'',;}]+/)) {
+      if (match(rest, /^[^[:space:]"'\'',;}]+/)) {
         out = out (RLENGTH > 8 ? substr(rest, 1, 4) : "") "***"
         rest = substr(rest, RLENGTH + 1)
       }

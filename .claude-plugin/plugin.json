@@ -1,7 +1,7 @@
 {
   "name": "repo-auditor-ia",
   "displayName": "Repo Auditor IA",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Auditoría de repositorios con informe en español, inglés o francés (plugins, servidores MCP, extensiones de LLM): fiabilidad, arquitectura, deuda técnica y preparación para IA, con razonamiento estructurado, calibración de confianza, informe reproducible y modo opcional de aplicación de arreglos.",
   "author": {
     "name": "novanoticia",
