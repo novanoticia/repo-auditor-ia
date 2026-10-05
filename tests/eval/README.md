@@ -14,7 +14,8 @@ toque `SKILL.md`, `references/` o `recon.sh`.
    bash tests/make-trap-repo.sh /tmp/inventory-sync
    ```
 2. En una sesión con el plugin instalado, pide la auditoría de esa ruta local
-   (`/repo-auditor-ia:auditar-repo /tmp/inventory-sync`, nivel *auditoría estándar*) y guarda
+   (`/repo-auditor-ia:auditar-repo /tmp/inventory-sync --lang es`, nivel *auditoría
+   estándar*; repítela con `--lang en` y `--lang fr` si el cambio afecta a los idiomas) y guarda
    el informe completo en un fichero, p. ej. `report.md`.
 3. Comprueba automáticamente lo verificable:
    ```bash
