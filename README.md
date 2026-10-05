@@ -54,6 +54,7 @@ skills/auditar-repo/references/        orquestación de modelos y modo implement
 skills/auditar-repo/scripts/recon.sh   reconocimiento determinista (solo lectura)
 tests/run.sh                           tests de regresión de recon.sh (bash puro, sin red)
 tests/make-trap-repo.sh                genera el «trap repo» sintético contra el que se prueba
+tests/trap-markers.txt                 marcadores de fuga, uno por valor plantado (fuera del repo generado)
 tests/stubs/                           sustitutos de npm / pip-audit / cargo-audit para los tests
 tests/eval/                            eval del propio auditor sobre el trap repo (informe esperado + check-report.sh)
 .github/workflows/ci.yml               shellcheck + tests en Linux y macOS

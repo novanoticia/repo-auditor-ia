@@ -39,8 +39,20 @@ for key in '"apiKey"' 'GITHUB_TOKEN=' 'AWS_SECRET_ACCESS_KEY=' 'settings.py:1:to
   check "secret detected: $key" "$key"
 done
 # QW4 / F5 — no planted value ever leaks past its first 4 chars
-check_not "no planted value leaks (secrets + TODO samples)" 'Hx4mN8vR'
-check "values masked as q7Zr***" 'q7Zr\*\*\*'
+# Leak markers (one per planted value) must never appear; the list must match
+# what the generator actually planted, or this check would pass vacuously.
+MARKERS="$ROOT/tests/trap-markers.txt"
+leaked=""; unplanted=""
+while IFS= read -r m; do
+  [ -n "$m" ] || continue
+  if printf '%s\n' "$OUT" | grep -qF -- "$m"; then leaked="$leaked $m"; fi
+  if ! grep -rqF --exclude-dir=.git -- "$m" "$TRAP"; then unplanted="$unplanted $m"; fi
+done < "$MARKERS"
+if [ -z "$leaked" ]; then ok "no planted value leaks (secrets + TODO samples)"
+else ko "no planted value leaks (leaked:$leaked)"; fi
+if [ -z "$unplanted" ]; then ok "every leak marker is planted in the trap repo"
+else ko "every leak marker is planted (missing:$unplanted)"; fi
+check "values masked (first 4 chars + ***)" '"m2Rw\*\*\*"'
 
 # QW1 / F1 — no lockfile => explicit skip, never an empty section
 check "npm without lockfile: skipped"     'npm audit needs a lockfile'
@@ -93,6 +105,21 @@ run_recon "$PLAIN"
 if [ "$RC" -eq 0 ]; then ok "exits 0 without git"; else ko "exits 0 without git (got $RC)"; fi
 check "commit section skipped without git" 'STATUS: skipped \(not a git repo'
 check "hotspots skipped without git"       'STATUS: skipped \(not a git repo\)$'
+
+echo "eval/check-report.sh — section order"
+# A correct report that mentions a section inline ("ver `<epistemico>`") must
+# not count as a duplicated section (G3).
+RPT="$WORK/report.md"
+{ for t in veredicto modelo_superior diagnostico hallazgos epistemico recomendaciones contexto; do
+    printf '<%s>\n</%s>\n' "$t" "$t"; done
+  # shellcheck disable=SC2016  # literal backticks: Markdown inline code, not a command
+  printf '<limites>\nHipótesis pendientes (ver `<epistemico>`).\n</limites>\n<nota_etica>\n</nota_etica>\n'
+} > "$RPT"
+OUT="$(bash "$ROOT/tests/eval/check-report.sh" "$RPT" 2>&1)"
+check     "inline section mention is not a duplicate" 'ok   9 XML sections in fixed order'
+printf '<veredicto>\n</veredicto>\n<hallazgos>\n</hallazgos>\n<diagnostico>\n</diagnostico>\n' > "$RPT"
+OUT="$(bash "$ROOT/tests/eval/check-report.sh" "$RPT" 2>&1)"
+check     "out-of-order sections still fail"          'FAIL 9 XML sections in fixed order'
 
 echo
 echo "passed: $pass  failed: $fail"
