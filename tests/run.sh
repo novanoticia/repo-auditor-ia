@@ -112,6 +112,7 @@ echo "eval/check-report.sh — section order"
 RPT="$WORK/report.md"
 { for t in veredicto modelo_superior diagnostico hallazgos epistemico recomendaciones contexto; do
     printf '<%s>\n</%s>\n' "$t" "$t"; done
+  # shellcheck disable=SC2016  # literal backticks: Markdown inline code, not a command
   printf '<limites>\nHipótesis pendientes (ver `<epistemico>`).\n</limites>\n<nota_etica>\n</nota_etica>\n'
 } > "$RPT"
 OUT="$(bash "$ROOT/tests/eval/check-report.sh" "$RPT" 2>&1)"
