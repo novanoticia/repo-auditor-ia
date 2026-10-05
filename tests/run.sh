@@ -93,11 +93,16 @@ if printf '%s\n' "$HOT" | grep -qE '^ *[0-9]+ helper\.py$'; then ko "old path no
 TEXT_SECTIONS="$(printf '%s\n' "$OUT" | sed -n 's/^== \(.*\) ==$/\1/p' | grep -v '^END OF PACK$')"
 JOUT="$(PATH="$STUBS:$PATH" bash "$RECON" --json "$TRAP" 2>&1)"
 # jcheck <desc> <python boolean expr over d (parsed JSON) and ts (text section names)>
+# On failure it shows why (validator error + start of the output), so a FAIL in CI
+# can be diagnosed from the log alone.
 jcheck() {
-  if printf '%s' "$JOUT" | TS="$TEXT_SECTIONS" python3 -c "
+  if err="$(printf '%s' "$JOUT" | TS="$TEXT_SECTIONS" python3 -c "
 import json, os, sys
 d = json.load(sys.stdin); ts = os.environ['TS'].split('\n')
-sys.exit(0 if ($2) else 1)" 2>/dev/null; then ok "$1"; else ko "$1"; fi
+sys.exit(0 if ($2) else 1)" 2>&1)"; then ok "$1"; return; fi
+  ko "$1"
+  printf '%s\n' "$err" | tail -1 | sed 's/^/         why: /'
+  printf '%s\n' "$JOUT" | head -3 | cut -c1-160 | sed 's/^/         out: /'
 }
 jcheck "--json: valid JSON"                       'True'
 jcheck "--json: schema id"                        'd["schema"] == "repo-auditor-ia/recon@1"'
