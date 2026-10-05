@@ -1,0 +1,8 @@
+#!/bin/sh
+# Stub for `npm audit`. Mode via STUB_NPM: clean | vulns | error (default).
+echo "ARGS: $*"
+case "${STUB_NPM:-error}" in
+  clean) echo "found 0 vulnerabilities"; exit 0 ;;
+  vulns) echo "2 high severity vulnerabilities"; exit 1 ;;
+  *)     echo "npm error code ENOLOCK"; exit 1 ;;
+esac

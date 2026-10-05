@@ -11,7 +11,7 @@ No se fía de lo que promete el README del proyecto auditado: juzga lo que el c�
 - **Severidad y confianza por separado:** un hallazgo puede ser grave y, a la vez, de confianza baja, y el informe lo muestra así.
 - **Evidencia obligatoria:** un hallazgo sin `archivo:línea`, función o commit no entra en el informe.
 - **Informe reproducible:** secciones fijas, rúbricas de puntuación ancladas e IDs estables (F1, QW1, CM1…), de modo que dos auditorías del mismo commit se pueden comparar fila a fila.
-- **Reconocimiento determinista:** un script de solo lectura (`recon.sh`) recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (enmascarados) y auditoría de dependencias cuando hay herramientas disponibles.
+- **Reconocimiento determinista:** un script de solo lectura (`recon.sh`) recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (enmascarados) y auditoría de dependencias cuando hay herramientas disponibles. Cada sección termina en `STATUS: ok | failed | skipped`: una sección vacía nunca se confunde con un resultado limpio, y solo la evidencia `ok` admite confianza Alta.
 - **Modo implementación (opcional):** si lo pides, aplica los arreglos que elijas por ID, uno a uno, verificando cada uno y con un commit por arreglo. Nunca hace push ni abre PR sin un permiso aparte.
 
 ## Instalación
@@ -46,16 +46,31 @@ Antes de empezar, el auditor te pregunta el nivel de profundidad (triage rápido
 ## Estructura
 
 ```
+AGENTS.md                              instrucciones para agentes: invariantes, comandos, convenciones
 .claude-plugin/plugin.json             manifiesto del plugin
 .claude-plugin/marketplace.json        marketplace propio (instalación directa desde este repo)
 skills/auditar-repo/SKILL.md           la skill: protocolo, pasos y plantilla del informe
 skills/auditar-repo/references/        orquestación de modelos y modo implementación
 skills/auditar-repo/scripts/recon.sh   reconocimiento determinista (solo lectura)
+tests/run.sh                           tests de regresión de recon.sh (bash puro, sin red)
+tests/make-trap-repo.sh                genera el «trap repo» sintético contra el que se prueba
+tests/stubs/                           sustitutos de npm / pip-audit / cargo-audit para los tests
+tests/eval/                            eval del propio auditor sobre el trap repo (informe esperado + check-report.sh)
+.github/workflows/ci.yml               shellcheck + tests en Linux y macOS
 ```
+
+Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
 
-La versión 1.0.0 de este plugin procede de la skill `github-plugin-analyzer-ia` (v4.1), con estos cambios:
+**1.1.0** — el reconocimiento ya no falla en silencio:
+
+- Cada sección de `recon.sh` termina en `STATUS: ok | failed | skipped`; solo la evidencia `ok` admite confianza Alta.
+- Las auditorías de dependencias distinguen «sin vulnerabilidades», «vulnerabilidades encontradas», «falló» y «omitida» (p. ej., sin lockfile). `pip-audit` audita las dependencias del repo, no el entorno del auditor.
+- El árbol muestra `.github/`; la heurística de secretos cubre JSON, `.env` sin comillas y nombres compuestos, y enmascara el valor completo.
+- Tests de regresión con un repo trampa sintético, CI en Linux y macOS, una eval del propio auditor y `AGENTS.md`.
+
+**1.0.0** — procede de la skill `github-plugin-analyzer-ia` (v4.1), con estos cambios:
 
 - Nombre estable, sin la versión incrustada.
 - Regla explícita contra la inyección de instrucciones desde el repositorio auditado.

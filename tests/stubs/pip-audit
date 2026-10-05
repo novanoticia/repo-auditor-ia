@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stub for pip-audit: echoes its arguments so tests can check the audit target.
+echo "ARGS: $*"
+echo "No known vulnerabilities found"
+exit 0

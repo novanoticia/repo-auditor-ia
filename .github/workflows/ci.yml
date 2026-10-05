@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS ships bash 3.2 + BSD grep/sed/awk: recon.sh must work on both.
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        if: runner.os == 'Linux'
+        run: shellcheck skills/auditar-repo/scripts/recon.sh tests/*.sh tests/eval/*.sh tests/stubs/*
+      - name: tests
+        run: bash tests/run.sh
