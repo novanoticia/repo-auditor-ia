@@ -9,18 +9,14 @@ toque `SKILL.md`, `references/` o `recon.sh`.
 
 ## Procedimiento
 
-1. Genera el trap repo:
-   ```text
-   bash tests/make-trap-repo.sh /tmp/inventory-sync
-   ```
+1. Genera el trap repo con el generador `tests/make-trap-repo.sh`, pasándole como único
+   argumento la ruta de destino (p. ej. `/tmp/inventory-sync`).
 2. En una sesión con el plugin instalado, pide la auditoría de esa ruta local
    (`/repo-auditor-ia:auditar-repo /tmp/inventory-sync --lang es`, nivel *auditoría
    estándar*; repítela con `--lang en` y `--lang fr` si el cambio afecta a los idiomas) y guarda
    el informe completo en un fichero, p. ej. `report.md`.
-3. Comprueba automáticamente lo verificable:
-   ```text
-   bash tests/eval/check-report.sh report.md
-   ```
+3. Comprueba automáticamente lo verificable: ejecuta `tests/eval/check-report.sh` con el
+   informe guardado como único argumento (`report.md`).
 4. Revisa a mano la tabla de abajo (lo que un grep no puede juzgar).
 
 **Que la eval sea ciega.** Quien audita no debe saber que es una prueba, o se portará mejor
