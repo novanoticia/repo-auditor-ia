@@ -11,7 +11,7 @@ No se fía de lo que promete el README del proyecto auditado: juzga lo que el c�
 - **Severidad y confianza por separado:** un hallazgo puede ser grave y, a la vez, de confianza baja, y el informe lo muestra así.
 - **Evidencia obligatoria:** un hallazgo sin `archivo:línea`, función o commit no entra en el informe.
 - **Informe reproducible:** secciones fijas, rúbricas de puntuación ancladas e IDs estables (F1, QW1, CM1…), de modo que dos auditorías del mismo commit se pueden comparar fila a fila.
-- **Reconocimiento determinista:** un script de solo lectura (`recon.sh`) recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (enmascarados) y auditoría de dependencias cuando hay herramientas disponibles.
+- **Reconocimiento determinista:** un script de solo lectura (`recon.sh`) recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (enmascarados) y auditoría de dependencias cuando hay herramientas disponibles. Cada sección termina en `STATUS: ok | failed | skipped`: una sección vacía nunca se confunde con un resultado limpio, y solo la evidencia `ok` admite confianza Alta.
 - **Modo implementación (opcional):** si lo pides, aplica los arreglos que elijas por ID, uno a uno, verificando cada uno y con un commit por arreglo. Nunca hace push ni abre PR sin un permiso aparte.
 
 ## Instalación
@@ -54,6 +54,7 @@ skills/auditar-repo/scripts/recon.sh   reconocimiento determinista (solo lectura
 tests/run.sh                           tests de regresión de recon.sh (bash puro, sin red)
 tests/make-trap-repo.sh                genera el «trap repo» sintético contra el que se prueba
 tests/stubs/                           sustitutos de npm / pip-audit / cargo-audit para los tests
+tests/eval/                            eval del propio auditor sobre el trap repo (informe esperado + check-report.sh)
 .github/workflows/ci.yml               shellcheck + tests en Linux y macOS
 ```
 

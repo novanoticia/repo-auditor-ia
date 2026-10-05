@@ -234,6 +234,12 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/auditar-repo/scripts/recon.sh" "$WORKDIR/repo
 *(Static mode: skip the script and collect the same items manually from what the user
 pastes.)*
 
+**Evidence contract (tri-state).** Every recon section ends with `STATUS: ok`,
+`STATUS: failed (…)` or `STATUS: skipped (…)`. Read the status before the content: an empty
+section is **never** a clean result. Only `ok` evidence may back a confidence **Alta**;
+every `failed`/`skipped` line goes to `<limites>` with its reason, and the corresponding
+check is either redone by hand (confidence **Media/Baja**) or declared not covered.
+
 Then build the mental map on top of the evidence pack (feeds R1 axes 1–2):
 
 - **Structure:** directory tree, modules, separation of concerns.
@@ -364,8 +370,9 @@ Prefer real tooling over eyeballing. The recon script (Step 3) already attempts 
 audits (`npm audit` / `pip-audit` / `cargo audit`) and a secret-pattern sweep; deepen with
 dedicated scanners (`gitleaks`, `trufflehog`) and an SBOM/dependency review for
 supply-chain risk when the effort level warrants it. Report tool output as evidence
-(confidence **Alta**). **In static mode (no shell), these tools are unavailable:** say so
-explicitly, reason from the manifest/text manually (confidence **Media/Baja**), and never
+(confidence **Alta**) **only when its recon line says `STATUS: ok`**; a `failed` or
+`skipped` tool is a coverage gap for `<limites>`, never an implicit "no vulnerabilities".
+**In static mode (no shell), these tools are unavailable:** say so explicitly, reason from the manifest/text manually (confidence **Media/Baja**), and never
 present imagined tool output as real.
 
 ## Step 5 — The Key Question (AI-readiness axis)

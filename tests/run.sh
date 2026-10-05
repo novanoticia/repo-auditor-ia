@@ -48,6 +48,14 @@ check "cargo without Cargo.lock: skipped" 'cargo audit needs a lockfile'
 # QW2 / F3 — pip-audit targets the repo's requirements, installs nothing
 check "pip-audit audits requirements.txt" 'ARGS: -r requirements.txt --no-deps --disable-pip'
 
+# Tri-state contract — every section ends with STATUS: ok|failed|skipped
+missing="$(printf '%s\n' "$OUT" | awk '
+  /^== END OF PACK ==/ { if (name != "" && !seen) print name; exit }
+  /^== / { if (name != "" && !seen) print name; name = $0; seen = 0; next }
+  /^STATUS: (ok|failed|skipped)/ { seen = 1 }')"
+if [ -z "$missing" ]; then ok "every section carries a STATUS line"
+else ko "every section carries a STATUS line (missing: $(echo "$missing" | tr '\n' ' '))"; fi
+
 # Read-only invariant — recon never modifies the audited repo
 if [ -z "$(git -C "$TRAP" status --porcelain)" ]; then ok "trap repo untouched"; else ko "trap repo untouched"; fi
 
@@ -65,10 +73,18 @@ run_recon "$PY"
 check "pyproject only: skipped (would run project code)" 'pyproject.toml only'
 check_not "pyproject only: pip-audit not invoked" 'ARGS:'
 
+echo "recon.sh — unreadable file"
+LOCKED="$WORK/locked"; mkdir -p "$LOCKED"; printf 'TODO x\n' > "$LOCKED/secret.txt"; chmod 000 "$LOCKED/secret.txt"
+run_recon "$LOCKED"
+chmod 644 "$LOCKED/secret.txt"
+check "grep error => STATUS: failed, not a clean result" 'STATUS: failed \(grep exit 2'
+
 echo "recon.sh — not a git repo"
 PLAIN="$WORK/plain"; mkdir -p "$PLAIN"; printf 'x\n' > "$PLAIN/a.txt"
 run_recon "$PLAIN"
 if [ "$RC" -eq 0 ]; then ok "exits 0 without git"; else ko "exits 0 without git (got $RC)"; fi
+check "commit section skipped without git" 'STATUS: skipped \(not a git repo'
+check "hotspots skipped without git"       'STATUS: skipped \(not a git repo\)$'
 
 echo
 echo "passed: $pass  failed: $fail"
