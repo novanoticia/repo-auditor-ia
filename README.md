@@ -63,7 +63,14 @@ Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
 
-La versión 1.0.0 de este plugin procede de la skill `github-plugin-analyzer-ia` (v4.1), con estos cambios:
+**1.1.0** — el reconocimiento ya no falla en silencio:
+
+- Cada sección de `recon.sh` termina en `STATUS: ok | failed | skipped`; solo la evidencia `ok` admite confianza Alta.
+- Las auditorías de dependencias distinguen «sin vulnerabilidades», «vulnerabilidades encontradas», «falló» y «omitida» (p. ej., sin lockfile). `pip-audit` audita las dependencias del repo, no el entorno del auditor.
+- El árbol muestra `.github/`; la heurística de secretos cubre JSON, `.env` sin comillas y nombres compuestos, y enmascara el valor completo.
+- Tests de regresión con un repo trampa sintético, CI en Linux y macOS, una eval del propio auditor y `AGENTS.md`.
+
+**1.0.0** — procede de la skill `github-plugin-analyzer-ia` (v4.1), con estos cambios:
 
 - Nombre estable, sin la versión incrustada.
 - Regla explícita contra la inyección de instrucciones desde el repositorio auditado.
