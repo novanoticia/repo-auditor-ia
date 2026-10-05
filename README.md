@@ -67,6 +67,11 @@ Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
 
+**1.2.1** — reconocimiento más completo:
+
+- Manifiestos y artefactos de agentes también en subdirectorios (profundidad 3 y 4, sin `node_modules`, `vendor`, `dist`…). Los manifiestos anidados, que las auditorías de dependencias no cubren, se declaran como `skipped`.
+- Las zonas calientes siguen los renombrados: la actividad de una ruta antigua cuenta para el nombre actual del fichero.
+
 **1.2.0** — informe en español, inglés o francés:
 
 - Opción `--lang es|en|fr` al invocar; si no se indica, se pregunta al empezar (español por defecto).
