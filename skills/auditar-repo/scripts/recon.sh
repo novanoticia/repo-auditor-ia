@@ -9,10 +9,33 @@ REPO="${1:-.}"
 cd "$REPO" 2>/dev/null || { echo "ERROR: cannot cd to '$REPO'" >&2; exit 1; }
 
 EXCL="--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=vendor --exclude-dir=dist --exclude-dir=build --exclude-dir=__pycache__ --exclude-dir=.venv"
-SECRET_PAT='(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[[:space:]]*[:=][[:space:]]*["'\''][A-Za-z0-9/+_-]{12,}'
+# Key may carry a suffix (AWS_SECRET_ACCESS_KEY, GITHUB_TOKEN), a closing quote
+# (JSON "apiKey": ...) and an unquoted value (.env files).
+SECRET_PAT='(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[A-Za-z0-9_]*["'\'']?[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9/+_.-]{12,}'
 
 section() { printf '\n== %s ==\n' "$1"; }
 has_git() { git rev-parse HEAD >/dev/null 2>&1; }
+
+# mask_secrets — filter that keeps each key-anchored value's first 4 chars and
+# replaces the rest with *** (values of 8 chars or fewer are fully masked), so
+# the key name stays as evidence but the value never reaches the agent.
+# Case-insensitive via tolower(): sed's I flag is GNU-only.
+mask_secrets() {
+  awk '
+  BEGIN { key = "(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[a-z0-9_]*[\"'\'']?[[:space:]]*[:=][[:space:]]*[\"'\'']?" }
+  {
+    rest = $0; out = ""
+    while (match(tolower(rest), key)) {
+      out = out substr(rest, 1, RSTART + RLENGTH - 1)
+      rest = substr(rest, RSTART + RLENGTH)
+      if (match(rest, /^[^[:space:]\"'\'',;}]+/)) {
+        out = out (RLENGTH > 8 ? substr(rest, 1, 4) : "") "***"
+        rest = substr(rest, RLENGTH + 1)
+      }
+    }
+    print out rest
+  }'
+}
 
 echo "RECON EVIDENCE PACK — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "dir: $(pwd)"
@@ -73,12 +96,11 @@ section "TODO/FIXME/HACK DENSITY"
 printf 'total occurrences: '
 grep -rniE '\b(TODO|FIXME|HACK|XXX)\b' $EXCL . 2>/dev/null | wc -l
 echo "sample lines (top 10 — discard self-referential/doc mentions before counting as debt):"
-grep -rniE '\b(TODO|FIXME|HACK|XXX)\b' $EXCL . 2>/dev/null | head -10
+grep -rniE '\b(TODO|FIXME|HACK|XXX)\b' $EXCL . 2>/dev/null | head -10 | mask_secrets
 
 section "SECRET HEURISTICS (candidates only — verify manually, Rule 6)"
-# Values are masked (first 4 chars + ***) so secrets never land in the agent's context.
-hits=$(grep -rniE "$SECRET_PAT" $EXCL . 2>/dev/null | head -10 \
-  | sed -E "s/([:=][[:space:]]*[\"'])([A-Za-z0-9\/+_-]{4})[A-Za-z0-9\/+_-]*/\1\2***/g")
+# Values are masked (see mask_secrets) so secrets never land in the agent's context.
+hits=$(grep -rniE "$SECRET_PAT" $EXCL . 2>/dev/null | head -10 | mask_secrets)
 if [ -n "$hits" ]; then echo "$hits"; else echo "no obvious hits (heuristic, not proof of absence)"; fi
 
 section "DEPENDENCY AUDIT (runs only if tooling is present)"
