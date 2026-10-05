@@ -72,21 +72,16 @@ to_json() {
   }'
 }
 
-# --json: run the text pack first (no partial JSON if it fails), then convert it.
-if [ "${1:-}" = "--json" ]; then
-  shift
-  pack=$(bash "$0" "$@") || exit $?
-  printf '%s\n' "$pack" | to_json
-  exit 0
-fi
-
+# main — the recon pack itself. A function so that --json can call it directly
+# instead of re-running this file.
+main() {
 REPO="${1:-.}"
 cd "$REPO" 2>/dev/null || { echo "ERROR: cannot cd to '$REPO'" >&2; exit 1; }
 
 EXCL="--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=vendor --exclude-dir=dist --exclude-dir=build --exclude-dir=__pycache__ --exclude-dir=.venv"
 # Key may carry a suffix (AWS_SECRET_ACCESS_KEY, GITHUB_TOKEN), a closing quote
 # (JSON "apiKey": ...) and an unquoted value (.env files).
-SECRET_REGEX='(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[A-Za-z0-9_]*["'\'']?[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9/+_.-]{12,}'
+KEYVAL_REGEX='(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[A-Za-z0-9_]*["'\'']?[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9/+_.-]{12,}'
 
 section() { printf '\n== %s ==\n' "$1"; }
 status()  { echo "STATUS: $*"; }
@@ -207,7 +202,7 @@ grep_status "$rc"
 
 section "SECRET HEURISTICS (candidates only — verify manually, Rule 6)"
 # Values are masked (see mask_secrets) so secrets never land in the agent's context.
-raw=$(grep -rniE "$SECRET_REGEX" $EXCL . 2>/dev/null); rc=$?
+raw=$(grep -rniE "$KEYVAL_REGEX" $EXCL . 2>/dev/null); rc=$?
 hits=$(printf '%s\n' "$raw" | head -10 | mask_secrets); unset raw
 if [ -n "$hits" ]; then echo "$hits"; else echo "no obvious hits (heuristic, not proof of absence)"; fi
 grep_status "$rc"
@@ -279,4 +274,15 @@ if [ "$nested" -gt 0 ]; then
 fi
 
 printf '\n== END OF PACK ==\n'
+}
+
+# --json: run the text pack first (no partial JSON if it fails), then convert it.
+if [ "${1:-}" = "--json" ]; then
+  shift
+  pack=$(main "$@") || exit $?
+  printf '%s\n' "$pack" | to_json
+  exit 0
+fi
+
+main "$@"
 exit 0
