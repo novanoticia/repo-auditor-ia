@@ -56,7 +56,17 @@ if [ -z "$leaked" ]; then ok "no planted value leaks (secrets + TODO samples)"
 else ko "no planted value leaks (leaked:$leaked)"; fi
 if [ -z "$unplanted" ]; then ok "every leak marker is planted in the trap repo"
 else ko "every leak marker is planted (missing:$unplanted)"; fi
-check "values masked (first 4 chars + ***)" '"m2Rw\*\*\*"'
+check "values masked (first 4 chars + ***)" '"Rk7q\*\*\*"'
+
+# G6 — planted values must look like real credentials of their kind, or the
+# auditor infers "synthetic fixture" from a uniform length and lowers severity.
+raw_len() { sed -nE "s/.*$1[\"']?[[:space:]]*[:=][[:space:]]*[\"']?([^\"'[:space:]]+).*/\\1/p" "$2" | head -1 | tr -d '\n' | wc -c | tr -d ' '; }
+GH_VAL="$(sed -nE 's/^GITHUB_TOKEN=//p' "$TRAP/.env")"
+if printf '%s' "$GH_VAL" | grep -qE '^ghp_[A-Za-z0-9]{36}$'; then ok "GitHub token has the classic ghp_ + 36 shape"; else ko "GitHub token has the classic ghp_ + 36 shape"; fi
+if [ "$(raw_len AWS_SECRET_ACCESS_KEY "$TRAP/.env")" = 40 ]; then ok "AWS secret key is 40 chars"; else ko "AWS secret key is 40 chars"; fi
+if grep -qE '^token = "eyJ[^.]+\.[^.]+\.[^."]+"$' "$TRAP/settings.py"; then ok "settings.py token is a three-part JWT"; else ko "settings.py token is a three-part JWT"; fi
+lens="$(for f in config.json .env settings.py deploy.yml notes.sh; do sed -nE "s/.*[:=][[:space:]]*[\"']?([^\"'[:space:]]{12,}).*/\\1/p" "$TRAP/$f"; done | awk '{print length($0)}' | sort -u | wc -l | tr -d ' ')"
+if [ "$lens" -ge 3 ]; then ok "planted values vary in length ($lens distinct)"; else ko "planted values vary in length (only $lens distinct)"; fi
 
 # QW1 / F1 — no lockfile => explicit skip, never an empty section
 check "npm without lockfile: skipped"     'npm audit needs a lockfile'
