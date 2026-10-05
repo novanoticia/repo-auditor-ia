@@ -39,8 +39,20 @@ for key in '"apiKey"' 'GITHUB_TOKEN=' 'AWS_SECRET_ACCESS_KEY=' 'settings.py:1:to
   check "secret detected: $key" "$key"
 done
 # QW4 / F5 — no planted value ever leaks past its first 4 chars
-check_not "no planted value leaks (secrets + TODO samples)" 'Hx4mN8vR'
-check "values masked as q7Zr***" 'q7Zr\*\*\*'
+# Leak markers (one per planted value) must never appear; the list must match
+# what the generator actually planted, or this check would pass vacuously.
+MARKERS="$ROOT/tests/trap-markers.txt"
+leaked=""; unplanted=""
+while IFS= read -r m; do
+  [ -n "$m" ] || continue
+  if printf '%s\n' "$OUT" | grep -qF -- "$m"; then leaked="$leaked $m"; fi
+  if ! grep -rqF --exclude-dir=.git -- "$m" "$TRAP"; then unplanted="$unplanted $m"; fi
+done < "$MARKERS"
+if [ -z "$leaked" ]; then ok "no planted value leaks (secrets + TODO samples)"
+else ko "no planted value leaks (leaked:$leaked)"; fi
+if [ -z "$unplanted" ]; then ok "every leak marker is planted in the trap repo"
+else ko "every leak marker is planted (missing:$unplanted)"; fi
+check "values masked (first 4 chars + ***)" '"m2Rw\*\*\*"'
 
 # QW1 / F1 — no lockfile => explicit skip, never an empty section
 check "npm without lockfile: skipped"     'npm audit needs a lockfile'

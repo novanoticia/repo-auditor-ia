@@ -14,6 +14,7 @@ skills/auditar-repo/references/       loaded on demand: model routing, implement
 skills/auditar-repo/scripts/recon.sh  deterministic evidence pack (read-only)
 tests/run.sh                          regression tests for recon.sh (offline, stubs)
 tests/make-trap-repo.sh               builds the synthetic trap repo the tests run on
+tests/trap-markers.txt                per-value leak markers (kept outside the generated repo)
 tests/stubs/                          fake npm / pip-audit / cargo-audit
 tests/eval/                           eval of the protocol itself on the trap repo
 .claude-plugin/                       plugin + marketplace manifests
