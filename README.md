@@ -51,7 +51,13 @@ Antes de empezar, el auditor te pregunta el nivel de profundidad (triage rápido
 skills/auditar-repo/SKILL.md           la skill: protocolo, pasos y plantilla del informe
 skills/auditar-repo/references/        orquestación de modelos y modo implementación
 skills/auditar-repo/scripts/recon.sh   reconocimiento determinista (solo lectura)
+tests/run.sh                           tests de regresión de recon.sh (bash puro, sin red)
+tests/make-trap-repo.sh                genera el «trap repo» sintético contra el que se prueba
+tests/stubs/                           sustitutos de npm / pip-audit / cargo-audit para los tests
+.github/workflows/ci.yml               shellcheck + tests en Linux y macOS
 ```
+
+Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
 

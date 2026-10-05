@@ -4,6 +4,7 @@
 # or git history is missing (prints "n/a" instead of failing).
 # Usage: bash scripts/recon.sh [repo-dir]     (default: current directory)
 
+# shellcheck disable=SC2086  # $EXCL is word-split into grep flags on purpose
 set -u
 REPO="${1:-.}"
 cd "$REPO" 2>/dev/null || { echo "ERROR: cannot cd to '$REPO'" >&2; exit 1; }

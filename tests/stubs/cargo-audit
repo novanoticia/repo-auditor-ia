@@ -1,0 +1,4 @@
+#!/bin/sh
+# Stub for cargo-audit (only reached when Cargo.lock exists).
+echo "ARGS: $*"
+exit 0
