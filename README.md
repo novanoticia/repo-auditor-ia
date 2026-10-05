@@ -4,6 +4,8 @@ Plugin para Claude que audita repositorios de GitHub (plugins, servidores MCP y 
 
 No se fía de lo que promete el README del proyecto auditado: juzga lo que el código hace de verdad.
 
+[Privacy / Privacidad](#datos-y-red): el plugin no tiene servidor propio ni recoge datos; qué lee, escribe y envía está detallado en «Datos y red».
+
 ## Qué hace
 
 - **Cuatro ejes, analizados por separado:** arquitectura, deuda técnica, fiabilidad y seguridad, y preparación para IA (si un agente podría entender y modificar el proyecto sin romperlo).
