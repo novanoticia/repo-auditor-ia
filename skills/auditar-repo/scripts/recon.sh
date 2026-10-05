@@ -118,17 +118,18 @@ mask_secrets() {
 # VCS, vendored and build dirs. Sorted, so repeated runs print identical output.
 find_named() {
   depth=$1; shift
-  expr=""
+  tests=()
   for p in "$@"; do
+    [ "${#tests[@]}" -gt 0 ] && tests+=(-o)
     case "$p" in
-      */*) expr="$expr -o -path '*/$p'" ;;
-      *)   expr="$expr -o -name '$p'" ;;
+      */*) tests+=(-path "*/$p") ;;
+      *)   tests+=(-name "$p") ;;
     esac
   done
-  eval "find . -maxdepth $depth \
+  find . -maxdepth "$depth" \
     \( -name .git -o -name node_modules -o -name vendor -o -name dist -o -name build \
        -o -name __pycache__ -o -name .venv \) -prune \
-    -o \( ${expr# -o } \) -print" 2>/dev/null | sort
+    -o \( "${tests[@]}" \) -print 2>/dev/null | sort
 }
 
 echo "RECON EVIDENCE PACK — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
