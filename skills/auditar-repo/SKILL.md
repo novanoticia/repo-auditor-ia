@@ -197,16 +197,22 @@ ALWAYS confirm before cloning. Ask in Spanish, e.g.:
 
 > Voy a clonar `<REPO_URL>` en un directorio temporal para auditar su código. ¿Procedemos?
 
-Once confirmed, use an isolated workspace:
+Once confirmed, create an isolated workspace and clone into it **in a single command**
+(use the host's scratchpad directory instead of `mktemp -d` when it provides one):
 
 ```bash
-WORKDIR=$(mktemp -d)
-git clone --depth=50 "<REPO_URL>" "$WORKDIR/repo"
-cd "$WORKDIR/repo"
+WORKDIR="$(mktemp -d)" && echo "WORKDIR=$WORKDIR" \
+  && git clone --filter=blob:none "<REPO_URL>" "$WORKDIR/repo"
 ```
 
-> `--depth=50` keeps enough history for Step 3 without downloading years of commits.
-> Increase depth only if you need more context.
+> **Use the printed absolute path literally from here on** (written `<WORKDIR>` below).
+> Many hosts run each shell command in a fresh process, so `$WORKDIR` is empty in the next
+> call: the recon would target `/repo` and the Step 9 cleanup would silently do nothing.
+>
+> `--filter=blob:none` is a partial clone: full history, every branch and tag, but file
+> contents only on demand. Old refs stay reachable for **version comparison** (a shallow
+> `--depth` clone is single-branch and cannot see older tags or commits), and the 6-month
+> hotspots are not truncated by a commit cap.
 
 If the clone fails (private repo, wrong URL), explain the problem and ask for help.
 
@@ -225,7 +231,7 @@ TODO/FIXME density, secret heuristics, and dependency audits when tooling exists
 repeated runs start from identical evidence (execute it; no need to read its source):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/auditar-repo/scripts/recon.sh" "$WORKDIR/repo" | tee "$WORKDIR/recon.txt"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/auditar-repo/scripts/recon.sh" "<WORKDIR>/repo" | tee "<WORKDIR>/recon.txt"
 ```
 
 > If the path above was not substituted (the variable appears literally, e.g. outside
@@ -254,7 +260,8 @@ Then build the mental map on top of the evidence pack (feeds R1 axes 1–2):
   concentrate recent fixes = probable debt). *(n/a in static mode.)*
 
 **Version comparison.** When the user asks to contrast two versions (tags, branches, or
-commits), diff them (`git diff <old-ref>..<new-ref> --stat`) and reason about *evolution*:
+commits), diff them (`git -C "<WORKDIR>/repo" diff <old-ref>..<new-ref> --stat`; the
+partial clone from Step 2 already has every ref) and reason about *evolution*:
 what regressed, what hardened, which modules concentrate churn. Report deltas explicitly,
 not just the current snapshot. Treat the newer version as fresh evidence that updates the
 judgment formed on the older one — the previous audit's posterior becomes this audit's
@@ -556,7 +563,8 @@ Close with options (in Spanish) — the user decides; never act automatically:
 3. **Issue template** — generate copy-paste-ready GitHub issues.
 4. **AI-readiness** — draft an `AGENTS.md` (or equivalent agent-instruction file) for the project.
 5. **Comparación** — contrast against a reference plugin or another branch/version.
-6. **Limpieza** — remove the temp directory: `rm -rf "$WORKDIR"`.
+6. **Limpieza** — remove the temp directory, giving the user the literal path from Step 2:
+   `rm -rf "<WORKDIR>"` (never a bare `$WORKDIR`, which may be empty in a new shell).
 
 ## Step 10 — Implementation Mode (opt-in, only on explicit request)
 
