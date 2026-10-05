@@ -39,8 +39,8 @@ for key in '"apiKey"' 'GITHUB_TOKEN=' 'AWS_SECRET_ACCESS_KEY=' 'settings.py:1:to
   check "secret detected: $key" "$key"
 done
 # QW4 / F5 — no planted value ever leaks past its first 4 chars
-check_not "no planted value leaks (secrets + TODO samples)" 'PLANTED'
-check "values masked as FAKE***" 'FAKE\*\*\*'
+check_not "no planted value leaks (secrets + TODO samples)" 'Hx4mN8vR'
+check "values masked as q7Zr***" 'q7Zr\*\*\*'
 
 # QW1 / F1 — no lockfile => explicit skip, never an empty section
 check "npm without lockfile: skipped"     'npm audit needs a lockfile'
@@ -66,6 +66,14 @@ for mode in clean:'STATUS: ok \(exit 0\)' vulns:'STATUS: ok \(exit 1: vulnerabil
   check "npm ${mode%%:*} => ${mode#*:}" "${mode#*:}"
 done
 rm -f "$TRAP/package-lock.json"
+
+echo "recon.sh — manifest present, auditor not installed"
+# PATH with only the npm stub + system dirs: pip-audit and cargo-audit are
+# guaranteed absent, so their manifests must still yield an explicit skip (G1).
+NPM_ONLY="$WORK/npm-only"; mkdir -p "$NPM_ONLY"; cp "$STUBS/npm" "$NPM_ONLY/npm"
+OUT="$(PATH="$NPM_ONLY:/usr/bin:/bin" "$BASH" "$RECON" "$TRAP" 2>&1)"
+check "pip-audit missing => skipped, not silent"   'STATUS: skipped \(pip-audit not installed'
+check "cargo-audit missing => skipped, not silent" 'STATUS: skipped \(cargo-audit not installed'
 
 echo "recon.sh — pyproject-only Python repo"
 PY="$WORK/py"; mkdir -p "$PY"; printf '[project]\nname = "x"\n' > "$PY/pyproject.toml"

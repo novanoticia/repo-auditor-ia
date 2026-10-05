@@ -63,6 +63,11 @@ Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
 
+**1.1.1** — correcciones halladas por la primera eval del auditor sobre el trap repo:
+
+- Si un manifiesto está presente pero su auditor no está instalado (p. ej., `pip-audit` o `cargo-audit`), `recon.sh` lo declara como `skipped` en lugar de callarlo.
+- El trap repo ya no delata que es una prueba (nombres, commits y valores neutros), para que la eval mida el comportamiento real del auditor.
+
 **1.1.0** — el reconocimiento ya no falla en silencio:
 
 - Cada sección de `recon.sh` termina en `STATUS: ok | failed | skipped`; solo la evidencia `ok` admite confianza Alta.

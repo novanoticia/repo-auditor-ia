@@ -11,16 +11,23 @@ toque `SKILL.md`, `references/` o `recon.sh`.
 
 1. Genera el trap repo:
    ```bash
-   bash tests/make-trap-repo.sh /tmp/trap-repo
+   bash tests/make-trap-repo.sh /tmp/inventory-sync
    ```
 2. En una sesión con el plugin instalado, pide la auditoría de esa ruta local
-   (`/repo-auditor-ia:auditar-repo /tmp/trap-repo`, nivel *auditoría estándar*) y guarda
+   (`/repo-auditor-ia:auditar-repo /tmp/inventory-sync`, nivel *auditoría estándar*) y guarda
    el informe completo en un fichero, p. ej. `report.md`.
 3. Comprueba automáticamente lo verificable:
    ```bash
    bash tests/eval/check-report.sh report.md
    ```
 4. Revisa a mano la tabla de abajo (lo que un grep no puede juzgar).
+
+**Que la eval sea ciega.** Quien audita no debe saber que es una prueba, o se portará mejor
+que con un repo real:
+- Usa una ruta neutra (no `trap-repo`, `fixture`, `eval`…). El generador ya evita nombres,
+  commits y valores que delaten la prueba.
+- Si la ejecuta un agente, dale solo la skill y la ruta; prohíbele leer `tests/` (contiene
+  las respuestas) y no le describas qué hay en el repo.
 
 ## Lo que el informe DEBE contener
 
