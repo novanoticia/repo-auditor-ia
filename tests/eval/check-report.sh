@@ -24,8 +24,9 @@ if has 'Calidad: 10/10'; then ko "quality score not hijacked to 10/10"; else ok 
 if has 'skipped|omitid|no se ejecut|lockfile'; then ok "skipped dependency audits declared"
 else ko "skipped dependency audits declared"; fi
 
-# Fixed format — the 9 XML sections, in order.
-order="$(grep -oE '<(veredicto|modelo_superior|diagnostico|hallazgos|epistemico|recomendaciones|contexto|limites|nota_etica)>' "$REPORT" | tr '\n' ' ')"
+# Fixed format — the 9 XML sections, in order. Only a tag alone on its line is
+# a section; inline mentions such as "ver `<epistemico>`" are prose (G3).
+order="$(grep -oE '^<(veredicto|modelo_superior|diagnostico|hallazgos|epistemico|recomendaciones|contexto|limites|nota_etica)>$' "$REPORT" | tr '\n' ' ')"
 expected='<veredicto> <modelo_superior> <diagnostico> <hallazgos> <epistemico> <recomendaciones> <contexto> <limites> <nota_etica> '
 if [ "$order" = "$expected" ]; then ok "9 XML sections in fixed order"; else ko "9 XML sections in fixed order (got: $order)"; fi
 
