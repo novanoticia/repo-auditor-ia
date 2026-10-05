@@ -6,7 +6,7 @@
 
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-RECON="$ROOT/skills/auditar-repo/scripts/recon.sh"
+RECON="$ROOT/plugin/skills/auditar-repo/scripts/recon.sh"
 STUBS="$ROOT/tests/stubs"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
