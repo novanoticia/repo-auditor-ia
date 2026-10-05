@@ -9,26 +9,27 @@ writes a fixed-format report **in Spanish (default), English or French** (`--lan
 only executable code is a read-only reconnaissance script and its tests.
 
 ```
-skills/auditar-repo/SKILL.md          the protocol (loaded in full on every invocation)
-skills/auditar-repo/references/       loaded on demand: report templates (es/en/fr), model routing,
+plugin/skills/auditar-repo/SKILL.md   the protocol (loaded in full on every invocation)
+plugin/skills/auditar-repo/references/ loaded on demand: report templates (es/en/fr), model routing,
                                       implementation mode
-skills/auditar-repo/scripts/recon.sh  deterministic evidence pack (read-only)
+plugin/skills/auditar-repo/scripts/recon.sh  deterministic evidence pack (read-only)
 tests/run.sh                          regression tests for recon.sh (offline, stubs)
 tests/make-trap-repo.sh               builds the synthetic trap repo the tests run on
 tests/trap-markers.txt                per-value leak markers (kept outside the generated repo)
 tests/stubs/                          fake npm / pip-audit / cargo-audit
 tests/eval/                           eval of the protocol itself on the trap repo
-.claude-plugin/                       plugin + marketplace manifests
+plugin/.claude-plugin/plugin.json    plugin manifest (the published plugin is only plugin/)
+.claude-plugin/marketplace.json        marketplace manifest (source: ./plugin)
 ```
 
 ## Commands
 
 ```bash
 bash tests/run.sh                                   # must be green before every commit
-shellcheck skills/auditar-repo/scripts/recon.sh tests/*.sh tests/eval/*.sh tests/stubs/*
+shellcheck plugin/skills/auditar-repo/scripts/recon.sh tests/*.sh tests/eval/*.sh tests/stubs/*
 bash tests/make-trap-repo.sh /tmp/inventory-sync    # then audit it; see tests/eval/README.md
 bash tests/eval/check-report.sh report.md           # automatic part of the eval
-bash skills/auditar-repo/scripts/recon.sh --json .  # recon pack as JSON
+bash plugin/skills/auditar-repo/scripts/recon.sh --json .  # recon pack as JSON
 ```
 
 CI (`.github/workflows/ci.yml`) runs shellcheck on Linux and the tests on Linux **and
@@ -74,7 +75,7 @@ macOS**.
 - **`recon.sh`** → add or adjust a check in `tests/run.sh` first, watch it fail, then fix.
 - **`SKILL.md` or `references/`** → run the trap-repo eval (`tests/eval/README.md`), in every
   language the change affects.
-- **Any behaviour users can notice** → bump `version` in `.claude-plugin/plugin.json`.
+- **Any behaviour users can notice** → bump `version` in `plugin/.claude-plugin/plugin.json`.
 
 ## Conventions
 
