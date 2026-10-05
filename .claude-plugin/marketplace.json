@@ -1,6 +1,6 @@
 {
   "name": "novanoticia",
-  "description": "Plugins de novanoticia para Claude: auditoría de repositorios en español.",
+  "description": "Plugins de novanoticia para Claude: auditoría de repositorios con informe en español, inglés o francés.",
   "owner": { "name": "novanoticia" },
   "plugins": [
     { "name": "repo-auditor-ia", "source": "./" }
