@@ -113,6 +113,11 @@ jcheck "--json: npm skip keeps its check name"    'any(x["check"] == "npm audit"
 jcheck "--json: summary counts every section"     'sum(d["summary"].values()) == len(d["sections"])'
 if printf '%s\n' "$JOUT" | grep -qF -f "$MARKERS"; then ko "--json: no planted value leaks"; else ok "--json: no planted value leaks"; fi
 
+# Quiet stderr — warnings (e.g. gawk on Linux about regex escapes) must never mix
+# into the pack; consumers that merge stderr would get invalid JSON.
+ERR="$(PATH="$STUBS:$PATH" bash "$RECON" "$TRAP" 2>&1 >/dev/null)"
+if [ -z "$ERR" ]; then ok "recon writes nothing to stderr"; else ko "recon writes nothing to stderr"; printf '%s\n' "$ERR" | head -2 | sed 's/^/         err: /'; fi
+
 # Read-only invariant — recon never modifies the audited repo
 if [ -z "$(git -C "$TRAP" status --porcelain)" ]; then ok "trap repo untouched"; else ko "trap repo untouched"; fi
 

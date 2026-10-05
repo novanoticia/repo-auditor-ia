@@ -109,7 +109,7 @@ mask_secrets() {
     while (match(tolower(rest), key)) {
       out = out substr(rest, 1, RSTART + RLENGTH - 1)
       rest = substr(rest, RSTART + RLENGTH)
-      if (match(rest, /^[^[:space:]\"'\'',;}]+/)) {
+      if (match(rest, /^[^[:space:]"'\'',;}]+/)) {
         out = out (RLENGTH > 8 ? substr(rest, 1, 4) : "") "***"
         rest = substr(rest, RLENGTH + 1)
       }
