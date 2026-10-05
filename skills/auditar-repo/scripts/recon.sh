@@ -108,7 +108,15 @@ if [ -f package.json ] && command -v npm >/dev/null 2>&1; then
 fi
 if { [ -f pyproject.toml ] || [ -f requirements.txt ]; } && command -v pip-audit >/dev/null 2>&1; then
   ran=1
-  run_audit "pip-audit" pip-audit
+  # Bare `pip-audit` audits the *auditor's* Python environment, not the repo.
+  # --no-deps --disable-pip checks the pinned requirements without installing
+  # anything; `pip-audit .` would build the project, i.e. run its code (Rule 7).
+  if [ -f requirements.txt ]; then
+    run_audit "pip-audit" pip-audit -r requirements.txt --no-deps --disable-pip
+  else
+    echo "-- pip-audit --"
+    echo "STATUS: skipped (pyproject.toml only — auditing it would build the project and run its code; review dependencies manually)"
+  fi
 fi
 if [ -f Cargo.toml ] && command -v cargo-audit >/dev/null 2>&1; then
   ran=1
