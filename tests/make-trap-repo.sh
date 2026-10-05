@@ -55,14 +55,14 @@ printf '{ "name": "inventory-sync" }\n' > package.json
 printf 'flask==0.1\n'         > requirements.txt
 printf '[package]\nname = "inventory-sync"\n' > Cargo.toml
 
-# Nested agent artifact (F9 — detection still pending, see tests/eval/).
+# Nested agent artifact: recon must list it (F9, checked in run.sh).
 mkdir -p pkg
 printf '{}\n' > pkg/.mcp.json
 
 gitc add -A
 gitc commit -qm "Initial import"
 
-# Rename so churn splits across two paths (F10 — detection still pending).
+# Rename: recon hotspots must follow it, counting 2 for lib/helper.py (F10).
 mkdir -p lib
 git mv helper.py lib/helper.py
 gitc commit -qm "Move helper into lib/"

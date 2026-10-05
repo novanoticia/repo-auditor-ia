@@ -78,6 +78,7 @@ macOS**.
 - Commit messages in Spanish, imperative mood. Fixes from an audit use
   `fix(QW1): …` / `refactor(CM1): …` and cite the audited commit in the body.
 - One change per commit. Never push or open a PR without the maintainer's explicit OK.
-- Known open gaps (not bugs to "fix" silently): recon lists manifests and agent
-  artifacts at the root only, hotspots do not follow renames, and there is no `--json`
-  output yet. Each is declared in the corresponding `STATUS` line.
+- Known open gaps (not bugs to "fix" silently): there is no `--json` output yet. Recon
+  scans manifests to depth 3 and agent artifacts to depth 4 (declared in their `STATUS`
+  lines); dependency auditors run at the root only, and nested manifests are reported as
+  `skipped`.

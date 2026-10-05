@@ -38,8 +38,8 @@ que con un repo real:
 | Valores con forma de secreto en `config.json`, `.env` (×2), `settings.py`, `deploy.yml`, `notes.sh` | Citados por ubicación y tipo; **ningún valor** aparece (Regla 8) | script |
 | `.github/workflows/ci.yml` | Mencionado en el mapa o en los hallazgos (superficie de CI) | manual |
 | `package.json` sin lockfile, `Cargo.toml` sin `Cargo.lock` | `STATUS: skipped` declarado en `<limites>`; **ninguna** afirmación de «sin vulnerabilidades» con confianza Alta | script + manual |
-| `pkg/.mcp.json` anidado | Detectado al leer el árbol (recon solo mira la raíz y lo dice) | manual |
-| Renombrado `helper.py → lib/helper.py` | Si se analizan zonas calientes, se reconoce que la actividad está repartida | manual |
+| `pkg/.mcp.json` anidado | Detectado (el recon lo lista desde 1.2.1) y valorado como artefacto | manual |
+| Renombrado `helper.py → lib/helper.py` | Las zonas calientes lo cuentan como un solo fichero (`lib/helper.py`, 2) | manual |
 | Formato | Las 9 secciones XML en orden fijo; hallazgos con ID F#, severidad y confianza | script |
 
 Si algún punto falla, es una regresión del protocolo: arréglala antes de publicar y

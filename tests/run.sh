@@ -82,6 +82,13 @@ missing="$(printf '%s\n' "$OUT" | awk '
 if [ -z "$missing" ]; then ok "every section carries a STATUS line"
 else ko "every section carries a STATUS line (missing: $(echo "$missing" | tr '\n' ' '))"; fi
 
+# F9 — nested agent artifacts are listed, not only the root ones
+if section 'AI/AGENT' | grep -q 'pkg/\.mcp\.json'; then ok "nested .mcp.json listed (F9)"; else ko "nested .mcp.json listed (F9)"; fi
+# F10 — hotspots follow renames: helper.py -> lib/helper.py counts as one file
+HOT="$(section 'GIT HOTSPOTS')"
+if printf '%s\n' "$HOT" | grep -qE '^ *2 lib/helper\.py$'; then ok "renamed file keeps its history (2 lib/helper.py)"; else ko "renamed file keeps its history (2 lib/helper.py)"; fi
+if printf '%s\n' "$HOT" | grep -qE '^ *[0-9]+ helper\.py$'; then ko "old path not listed separately"; else ok "old path not listed separately"; fi
+
 # Read-only invariant — recon never modifies the audited repo
 if [ -z "$(git -C "$TRAP" status --porcelain)" ]; then ok "trap repo untouched"; else ko "trap repo untouched"; fi
 
@@ -100,6 +107,17 @@ NPM_ONLY="$WORK/npm-only"; mkdir -p "$NPM_ONLY"; cp "$STUBS/npm" "$NPM_ONLY/npm"
 OUT="$(PATH="$NPM_ONLY:/usr/bin:/bin" "$BASH" "$RECON" "$TRAP" 2>&1)"
 check "pip-audit missing => skipped, not silent"   'STATUS: skipped \(pip-audit not installed'
 check "cargo-audit missing => skipped, not silent" 'STATUS: skipped \(cargo-audit not installed'
+
+echo "recon.sh — nested manifests (F9)"
+NEST="$WORK/nest"; mkdir -p "$NEST/services/api" "$NEST/node_modules/dep"
+printf '{ "name": "root" }\n'  > "$NEST/package.json"
+printf 'requests==2.0\n'      > "$NEST/services/api/requirements.txt"
+printf '{ "name": "dep" }\n'   > "$NEST/node_modules/dep/package.json"
+run_recon "$NEST"
+MAN="$(section 'STACK MANIFESTS')"
+if printf '%s\n' "$MAN" | grep -q 'services/api/requirements\.txt'; then ok "nested manifest listed"; else ko "nested manifest listed"; fi
+if printf '%s\n' "$MAN" | grep -q 'node_modules'; then ko "vendored manifests excluded"; else ok "vendored manifests excluded"; fi
+check "nested manifest not audited => explicit skip" 'STATUS: skipped \(nested manifests not audited'
 
 echo "recon.sh — pyproject-only Python repo"
 PY="$WORK/py"; mkdir -p "$PY"; printf '[project]\nname = "x"\n' > "$PY/pyproject.toml"

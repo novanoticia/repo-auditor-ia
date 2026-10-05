@@ -50,6 +50,24 @@ mask_secrets() {
   }'
 }
 
+# find_named <maxdepth> <pattern...> — paths (./a/b) whose name matches a pattern
+# (a pattern containing "/" is matched against the path suffix instead), pruning
+# VCS, vendored and build dirs. Sorted, so repeated runs print identical output.
+find_named() {
+  depth=$1; shift
+  expr=""
+  for p in "$@"; do
+    case "$p" in
+      */*) expr="$expr -o -path '*/$p'" ;;
+      *)   expr="$expr -o -name '$p'" ;;
+    esac
+  done
+  eval "find . -maxdepth $depth \
+    \( -name .git -o -name node_modules -o -name vendor -o -name dist -o -name build \
+       -o -name __pycache__ -o -name .venv \) -prune \
+    -o \( ${expr# -o } \) -print" 2>/dev/null | sort
+}
+
 echo "RECON EVIDENCE PACK — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "dir: $(pwd)"
 echo "contract: every section ends with STATUS: ok | failed | skipped — only 'ok' evidence may be cited with confidence Alta"
@@ -63,23 +81,17 @@ else
   status "skipped (not a git repo — no history-based checks available)"
 fi
 
-section "STACK MANIFESTS (root)"
-found=0
-for f in package.json pyproject.toml setup.py requirements.txt go.mod Cargo.toml \
-         composer.json Gemfile pom.xml build.gradle Makefile Dockerfile docker-compose.yml; do
-  [ -e "$f" ] && { echo "$f"; found=1; }
-done
-[ "$found" -eq 0 ] && echo "none detected at root"
-status "ok (root only — nested manifests are not listed)"
+section "STACK MANIFESTS (depth <= 3)"
+manifest_list=$(find_named 3 package.json pyproject.toml setup.py requirements.txt go.mod \
+  Cargo.toml composer.json Gemfile pom.xml build.gradle Makefile Dockerfile docker-compose.yml)
+if [ -n "$manifest_list" ]; then printf '%s\n' "$manifest_list"; else echo "none detected"; fi
+status "ok (depth <= 3; vendored/build dirs excluded)"
 
-section "AI/AGENT & PLUGIN ARTIFACTS"
-found=0
-for f in SKILL.md AGENTS.md CLAUDE.md .cursorrules .cursor/rules mcp.json .mcp.json \
-         manifest.json plugin.json .claude-plugin; do
-  [ -e "$f" ] && { echo "$f"; found=1; }
-done
-[ "$found" -eq 0 ] && echo "none detected"
-status "ok (root only — nested artifacts are not listed)"
+section "AI/AGENT & PLUGIN ARTIFACTS (depth <= 4)"
+artifacts=$(find_named 4 SKILL.md AGENTS.md CLAUDE.md GEMINI.md .cursorrules .cursor/rules \
+  mcp.json .mcp.json manifest.json plugin.json .claude-plugin .github/copilot-instructions.md)
+if [ -n "$artifacts" ]; then printf '%s\n' "$artifacts"; else echo "none detected"; fi
+status "ok (depth <= 4; vendored/build dirs excluded)"
 
 section "TREE (2 levels, capped at 80 entries)"
 # Exact-dir exclusions: a './.git*' prefix would also hide .github/ (CI workflows).
@@ -103,9 +115,14 @@ status "ok"
 
 section "GIT HOTSPOTS (churn, last 6 months, top 15)"
 if has_git; then
-  git log --since="6 months ago" --name-only --format= 2>/dev/null \
-    | grep -v '^$' | sort | uniq -c | sort -rn | head -15
-  status "ok (renames are not followed — churn may be split across old/new paths)"
+  # Renames are followed: log is newest-first, so each "R old new" maps the old
+  # path (and every older change to it) onto the file's current name.
+  git log --since="6 months ago" -M --name-status --format= 2>/dev/null | awk -F '\t' '
+    $1 ~ /^R/ { cur = ($3 in final) ? final[$3] : $3; final[$2] = cur; n[cur]++; next }
+    NF >= 2   { cur = ($2 in final) ? final[$2] : $2; n[cur]++ }
+    END       { for (f in n) printf "%4d %s\n", n[f], f }' \
+    | sort -k1,1rn -k2,2 | head -15
+  status "ok (renames followed)"
 else
   status "skipped (not a git repo)"
 fi
@@ -185,6 +202,12 @@ if [ -f Cargo.toml ]; then
 fi
 if [ "$manifests" -eq 0 ]; then
   status "skipped (no npm/Python/Cargo manifest at root — nothing to audit automatically)"
+fi
+# Auditors run at the root only: nested manifests are declared, never silent (F9).
+nested=$(find_named 3 package.json requirements.txt pyproject.toml Cargo.toml | grep -c '^\./.*/')
+if [ "$nested" -gt 0 ]; then
+  echo "-- nested manifests --"
+  status "skipped (nested manifests not audited: $nested — see STACK MANIFESTS; review manually)"
 fi
 
 printf '\n== END OF PACK ==\n'
