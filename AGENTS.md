@@ -75,6 +75,7 @@ macOS**.
 - **`recon.sh`** → add or adjust a check in `tests/run.sh` first, watch it fail, then fix.
 - **`SKILL.md` or `references/`** → run the trap-repo eval (`tests/eval/README.md`), in every
   language the change affects.
+- **What the plugin reads, writes or sends** → update the "Datos y red" section in both `README.md` and `plugin/README.md` (the directory only sees `plugin/`) and keep the submission form answers consistent.
 - **Any behaviour users can notice** → bump `version` in `plugin/.claude-plugin/plugin.json`.
 
 ## Conventions

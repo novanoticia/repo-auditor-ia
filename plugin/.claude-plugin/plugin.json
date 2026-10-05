@@ -1,7 +1,7 @@
 {
   "name": "repo-auditor-ia",
   "displayName": "Repo Auditor IA",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "description": "Auditoría de repositorios con informe en español, inglés o francés (plugins, servidores MCP, extensiones de LLM): fiabilidad, arquitectura, deuda técnica y preparación para IA, con razonamiento estructurado, calibración de confianza, informe reproducible y modo opcional de aplicación de arreglos.",
   "author": {
     "name": "novanoticia",
@@ -10,6 +10,7 @@
   "homepage": "https://github.com/novanoticia/repo-auditor-ia",
   "repository": "https://github.com/novanoticia/repo-auditor-ia",
   "license": "MIT",
+  "privacyPolicyUrl": "https://github.com/novanoticia/repo-auditor-ia#datos-y-red",
   "keywords": [
     "auditoria",
     "code-review",
