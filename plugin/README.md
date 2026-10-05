@@ -23,3 +23,7 @@ Qué lee, qué escribe y qué sale de tu máquina:
 ## Más información
 
 Documentación completa, historial de versiones y código fuente: <https://github.com/novanoticia/repo-auditor-ia>. Licencia MIT.
+
+---
+
+*Nota ética: este texto se ha elaborado con asistencia de IA y requiere revisión humana.*

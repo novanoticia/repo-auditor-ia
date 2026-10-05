@@ -126,3 +126,7 @@ Para ejecutar los tests: `bash tests/run.sh`.
 ---
 
 *Este plugin y su documentación se han elaborado con asistencia de IA y requieren revisión humana.*
+
+---
+
+*Nota ética: este texto se ha elaborado con asistencia de IA y requiere revisión humana.*
