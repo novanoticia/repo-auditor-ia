@@ -3,7 +3,8 @@
 Read this file when the user explicitly asks to apply audit fixes ("ejecuta los fixes",
 "aplica QW1 y CM2", Step 9 option 2). It turns the audit's findings (F#) and
 recommendations (QW# / CM#) into applied, verified changes — without ever bypassing the
-Golden Rules. All user-facing output stays in Spanish.
+Golden Rules. All user-facing output stays in the report language chosen for the audit
+(es / en / fr — see LANGUAGE in `SKILL.md`).
 
 **Hard gates (all non-negotiable):**
 - Only on explicit user request; confirm the exact scope (which IDs) before touching code.
@@ -72,7 +73,9 @@ around a safeguard, model-usage log). Implementation-specific additions:
 
 ## 4. Output contract — the implementation report
 
-Emit after the last fix, in Spanish, separate from the 9-section audit report:
+Emit after the last fix, in the report language (the shape below is the Spanish one;
+translate headings and labels, keep the `<implementacion>` tag and the IDs), separate from
+the 9-section audit report:
 
 ```markdown
 <implementacion>

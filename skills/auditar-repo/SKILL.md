@@ -9,8 +9,10 @@ description: >
   español con hallazgos e IDs estables; un modo de implementación opcional aplica después
   los arreglos elegidos, verificando cada uno. Úsalo con "/repo-auditor-ia:auditar-repo",
   "audita este repo", "analiza el plugin", "analiza este MCP", "compara versiones del
-  repo", "ejecuta los fixes" o "aplica las mejoras". Clona solo con confirmación cuando
-  hay shell/git (si no, auditoría estática); cualquier lenguaje.
+  repo", "ejecuta los fixes" o "aplica las mejoras"; también "audit this repo" o "auditer
+  ce dépôt". Informe en español (por defecto), inglés o francés: "--lang en|fr|es" al
+  invocar, o se pregunta al empezar. Clona solo con confirmación cuando hay shell/git (si
+  no, auditoría estática); cualquier lenguaje.
 ---
 
 # Repo Auditor IA · auditoría de repositorios con razonamiento estructurado
@@ -29,7 +31,7 @@ promises, but on what the code actually does.
 1–2 get repo & clone with confirmation (or MODO ESTÁTICO) → 3 reconnaissance
 (`scripts/recon.sh` evidence pack + triage) → 3.5 delegate heavy slices to sub-agents when
 needed → 4 deep audit along the four R1 axes → 5–6 AI-readiness question + non-obvious
-recommendation → 7 self-verification (R4) → 8 fixed-format Spanish report → 9 next steps
+recommendation → 7 self-verification (R4) → 8 fixed-format report (es/en/fr) → 9 next steps
 and cleanup → 10 *(opt-in)* Implementation Mode: apply user-selected fixes with per-fix
 verification, reusing the same model-orchestration policy.
 
@@ -40,17 +42,33 @@ The audit is never a single pass: an explicit **internal reasoning protocol** �
 
 ## ⚠️ LANGUAGE — Read First
 
-**Write every user-facing message in Spanish.** This file is in English for precision
-and maintainability, but all output to the user — questions, confirmations, the report,
-and next steps — MUST be in technical Spanish. Keep the in-English step labels
-(`Step 1`, `Quick Wins`, etc.) and the XML section tags as recognizable anchors; render
-everything else in Spanish.
+**Every user-facing message goes in the report language: Spanish (`es`, default), English
+(`en`) or French (`fr`).** This file is in English for precision and maintainability; all
+output to the user — questions, confirmations, the report, next steps and the Step 10
+implementation report — MUST be in that language, in a technical register.
+
+**How the language is chosen** (first match wins):
+1. **Invocation argument:** `--lang es|en|fr` in the skill arguments
+   (e.g. `/repo-auditor-ia:auditar-repo <url> --lang en`). An explicit request in the
+   message ("en inglés", "in English", "en français") counts the same.
+2. **Otherwise ask in Step 0**, in Spanish, together with the effort level, offering
+   Español (recommended) · English · Français.
+3. **No way to ask** (non-interactive run, sub-agent): Spanish.
+Any other language code → say only es/en/fr are supported and use Spanish.
+
+**Language-neutral anchors — identical in every language,** so runs stay comparable
+across languages: the 9 XML section tags, the IDs `F#` / `QW#` / `CM#`, the severity
+emojis 🔴🟠🟡🔵, the `X/10` score format, recon `STATUS:` lines and the step labels
+(`Step 1`, `Quick Wins`). Everything else — headings, verdicts, confidence labels, prose —
+comes from `references/report-template.<lang>.md` (Step 8). In this file, confidence is
+written with its canonical Spanish labels **Alta / Media / Baja**; render them with the
+selected template's labels (High/Medium/Low, Haute/Moyenne/Faible).
 
 ## ⛔ Model-Naming Constraint (non-negotiable)
 
 Never name a specific AI model as the reasoning engine anywhere in the output. Refer to
 the analytical work as "el protocolo de razonamiento interno", "un modelo de razonamiento
-avanzado", or "el auditor". Specific AI product names may only appear as **compatible
+avanzado", or "el auditor" (or the template's equivalent in the report language). Specific AI product names may only appear as **compatible
 usage contexts** — never as the internal engine doing the analysis.
 
 **Scope:** this governs **user-facing output** only. Internal routing configuration —
@@ -178,6 +196,8 @@ Before doing anything, establish the ground rules:
   up front and follow the degraded path: ask the user to paste key files or a directory
   tree, audit statically from that, and **never invent the parts you cannot see**. Decide
   static-vs-full *before* Step 2, not after failing to clone.
+- **Report language.** If no `--lang` / explicit request (see LANGUAGE), ask now, in the
+  same question as the effort level: Español (recommended) · English · Français.
 - **Effort level.** Ask the user (or infer) and apply this depth mapping consistently:
 
 | Nivel | Cobertura | Protocolo |
@@ -193,7 +213,8 @@ user wants a specific version audited. Don't assume a repo from earlier conversa
 
 ## Step 2 — Clone (with confirmation)
 
-ALWAYS confirm before cloning. Ask in Spanish, e.g.:
+ALWAYS confirm before cloning, in the report language (the template's "Clone
+confirmation" label), e.g. in Spanish:
 
 > Voy a clonar `<REPO_URL>` en un directorio temporal para auditar su código. ¿Procedemos?
 
@@ -427,80 +448,13 @@ its job is to make the report that follows trustworthy and reproducible.
 
 ## Step 8 — Generate the Report
 
-Present the report in the conversation (don't save files). **Write it in Spanish**, and
-follow this template **exactly** — same sections, same order, every run — so that repeated
-audits of the same repo are directly comparable. The `<seccion>` XML tags are fixed
-anchors; keep them verbatim. Never reorder sections or invent new top-level ones.
-
-```markdown
-<veredicto>
-# 🔍 Auditoría: <nombre-del-repo>
-
-**Veredicto:** <Sólido | Funcional pero frágil | Engañosamente funcional | Necesita trabajo serio>
-<2-3 frases honestas que se sigan de la lista priorizada, no del optimismo>
-
-**Calidad: X/10** · **AI-Readiness: X/10** · Commit: `<hash | "n/a — modo estático">` · Stack: <runtime> · Madurez: <prototipo/beta/prod>
-</veredicto>
-
-<modelo_superior>
-## ¿Podría un razonamiento más capaz mejorar este código?
-<Qué refactorizaría con seguridad vs. qué requiere decisión humana de diseño.
-"Más capaz" = capacidad analítica abstracta, nunca un producto de IA concreto.>
-</modelo_superior>
-
-<diagnostico>
-## Diagnóstico Ejecutivo
-- **Repositorio:** <URL o "N/A — fichero local / modo estático">
-- **Propósito real:** <qué hace vs. lo que declara>
-- **Tamaño y cobertura de tests:** <evaluación>
-</diagnostico>
-
-<hallazgos>
-## Hallazgos priorizados
-Orden fijo: primero por severidad (🔴→🔵), y a igual severidad por confianza (Alta→Baja).
-Asigna IDs estables tras ordenar (F1, F2, …): son las referencias que usa el Step 10.
-
-| ID | Sev | Conf | Hallazgo | Evidencia | Impacto |
-|----|-----|------|----------|-----------|---------|
-| F1 | 🔴  | Alta | …        | `file:línea` | … |
-</hallazgos>
-
-<epistemico>
-## Auditoría Epistémica y Riesgos Ocultos
-<Happy Path Bias, concurrencia, fragilidad invisible — con archivo:línea exactos>
-<Hipótesis abiertas (R2): interpretación + prueba que la confirmaría o descartaría>
-</epistemico>
-
-<recomendaciones>
-## Recomendaciones (máx. 7, por impacto real)
-### ⚡ Quick Wins (alto valor / bajo esfuerzo)
-1. **QW1 · <Problema>** → <Solución concreta> → `archivo:línea` → resuelve <F#>
-### 🏗️ Cirugía Mayor (refactors estructurales)
-1. **CM1 · <Problema>** → <Solución concreta> → `archivo/módulo` → resuelve <F#>
-### 💡 Recomendación No Obvia (obligatoria)
-<La palanca creativa del Step 6: enfoque alternativo / reframe / AI-readiness + porqué>
-</recomendaciones>
-
-<contexto>
-## Contexto y Evolución
-- **Historial de versiones / diff entre versiones:** zonas calientes, qué mejoró, qué regresó.
-- **Stack y dependencias:** versiones y riesgos notables.
-</contexto>
-
-<limites>
-## Límites del análisis
-<Qué se verificó, qué no, qué áreas se muestrearon, hipótesis pendientes, priors/supuestos
-declarados, ejes R1 con cobertura parcial. Si hubo delegación (Step 3.5), declara qué ejes/rutas
-se delegaron y el **model-usage log** (qué tramo corrió en qué modelo y por qué: valor /
-bloqueo / redirección / cuota). En modo estático, declara qué pasos dinámicos quedaron fuera.>
-</limites>
-
-<nota_etica>
----
-*Informe elaborado con asistencia de IA. Requiere revisión humana antes de actuar sobre
-sus conclusiones.*
-</nota_etica>
-```
+Present the report in the conversation (don't save files), in the report language.
+**Read `references/report-template.<lang>.md` (`es`, `en` or `fr`) and follow its template
+exactly** — same sections, same order, every run — so repeated audits of the same repo are
+directly comparable. Load only the selected language's file. The template also gives the
+labels for verdicts, confidence, static mode and the next-steps menu. The `<seccion>` XML
+tags are fixed anchors, identical in every language; keep them verbatim. Never reorder
+sections or invent new top-level ones.
 
 **Score anchors (so X/10 stays comparable across runs):**
 - **Calidad** — 9–10: production-ready, only 🔵 findings · 7–8: solid with localized debt,
@@ -518,10 +472,12 @@ sus conclusiones.*
   cell; recommendations carry QW#/CM# IDs and point back to the F# they resolve.
 - Sort findings deterministically (severity, then confidence) so two runs on the same
   commit line up row-for-row.
-- Cap recommendations at 7 and always include the "Recomendación No Obvia".
-- **Static-mode fallbacks:** when there is no repo/commit, write `n/a — modo estático` for
-  Commit and mark the X/10 scores as `(estimado, sin ejecución)` — never invent a hash or
-  imply runtime you didn't observe (Rule 6).
+- Cap recommendations at 7 and always include the mandatory non-obvious recommendation
+  ("Recomendación No Obvia" / its template label).
+- **Static-mode fallbacks:** when there is no repo/commit, write the template's static-mode
+  Commit value (`n/a — modo estático` in Spanish) and mark the X/10 scores as estimated
+  (`(estimado, sin ejecución)`) — never invent a hash or imply runtime you didn't observe
+  (Rule 6).
 
 ### Ejemplo-oro (few-shot compacto)
 A minimal, correct *shape* to anchor the format — illustrative only; do not copy its content:
@@ -548,14 +504,16 @@ If any answer is "no", fix it before shipping — this is what makes runs reprod
 - [ ] ¿Cada fila de `<hallazgos>` lleva ID estable (F#), severidad **y** confianza?
 - [ ] ¿Cada recomendación lleva ID (QW#/CM#) y referencia al F# que resuelve?
 - [ ] ¿Están los hallazgos ordenados por severidad y luego confianza?
-- [ ] ¿≤ 7 recomendaciones, con la "Recomendación No Obvia" incluida?
+- [ ] ¿≤ 7 recomendaciones, con la "Recomendación No Obvia" (o su etiqueta) incluida?
+- [ ] ¿Todo el texto va en el idioma elegido, con las etiquetas de su plantilla?
 - [ ] ¿Cada hallazgo tiene ancla `file:línea` / `function()` / commit (o se cayó en R4)?
 - [ ] ¿Las notas X/10 respetan las Score anchors (y en modo estático van como `estimado`)?
 - [ ] ¿En modo estático marqué Commit/scores como `n/a`/`estimado` en vez de inventarlos?
 
 ## Step 9 — Offer Next Steps
 
-Close with options (in Spanish) — the user decides; never act automatically:
+Close with options (in the report language, labels from the template) — the user
+decides; never act automatically:
 
 1. **Profundizar** — analyze a specific file or vulnerability.
 2. **Ejecutar fix** — enter **Step 10 (Implementation Mode)** for the IDs the user picks
@@ -592,7 +550,8 @@ and follow it; the contract in one breath:
 
 ## Final Reminders
 
-- **Communicate in Spanish**; instructions are in English, output is always Spanish.
+- **Communicate in the report language** (es default, en, fr); instructions are in
+  English, output follows the selected template.
 - **No model names as the engine** — routing config (Step 3.5 / reference file) is the only
   place concrete models may be named.
 - **Don't modify the repo** unless the user explicitly asks — and then only through
@@ -606,6 +565,8 @@ and follow it; the contract in one breath:
 - `references/model-routing.md` — frontier-model orchestration: role definitions, how to
   check a model's live safeguards/quota/permitted-use online, how to map roles onto the
   host's sub-agent mechanism, and how to onboard future models. Read it only when you actually delegate (Step 3.5).
+- `references/report-template.{es,en,fr}.md` — the Step 8 report template and labels per
+  language. Read only the selected one, at Step 8.
 - `references/implementation-mode.md` — Implementation Mode (Step 10): gates and consent,
   branch and baseline, the per-fix loop, the implementation sub-agent contract (model
   alternation during fixes), failure handling, static-mode patches, and the
