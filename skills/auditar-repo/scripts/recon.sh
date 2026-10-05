@@ -115,9 +115,14 @@ status "ok"
 
 section "GIT HOTSPOTS (churn, last 6 months, top 15)"
 if has_git; then
-  git log --since="6 months ago" --name-only --format= 2>/dev/null \
-    | grep -v '^$' | sort | uniq -c | sort -rn | head -15
-  status "ok (renames are not followed — churn may be split across old/new paths)"
+  # Renames are followed: log is newest-first, so each "R old new" maps the old
+  # path (and every older change to it) onto the file's current name.
+  git log --since="6 months ago" -M --name-status --format= 2>/dev/null | awk -F '\t' '
+    $1 ~ /^R/ { cur = ($3 in final) ? final[$3] : $3; final[$2] = cur; n[cur]++; next }
+    NF >= 2   { cur = ($2 in final) ? final[$2] : $2; n[cur]++ }
+    END       { for (f in n) printf "%4d %s\n", n[f], f }' \
+    | sort -k1,1rn -k2,2 | head -15
+  status "ok (renames followed)"
 else
   status "skipped (not a git repo)"
 fi

@@ -84,6 +84,11 @@ else ko "every section carries a STATUS line (missing: $(echo "$missing" | tr '\
 
 # F9 — nested agent artifacts are listed, not only the root ones
 if section 'AI/AGENT' | grep -q 'pkg/\.mcp\.json'; then ok "nested .mcp.json listed (F9)"; else ko "nested .mcp.json listed (F9)"; fi
+# F10 — hotspots follow renames: helper.py -> lib/helper.py counts as one file
+HOT="$(section 'GIT HOTSPOTS')"
+if printf '%s\n' "$HOT" | grep -qE '^ *2 lib/helper\.py$'; then ok "renamed file keeps its history (2 lib/helper.py)"; else ko "renamed file keeps its history (2 lib/helper.py)"; fi
+if printf '%s\n' "$HOT" | grep -qE '^ *[0-9]+ helper\.py$'; then ko "old path not listed separately"; else ok "old path not listed separately"; fi
+
 # Read-only invariant — recon never modifies the audited repo
 if [ -z "$(git -C "$TRAP" status --porcelain)" ]; then ok "trap repo untouched"; else ko "trap repo untouched"; fi
 
