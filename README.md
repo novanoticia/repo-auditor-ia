@@ -1,6 +1,6 @@
 # Repo Auditor IA
 
-Plugin para Claude que audita repositorios de GitHub (plugins, servidores MCP y extensiones de LLM, aunque sirve para código en cualquier lenguaje) y entrega un **informe en español**, con evidencia trazable y comparable entre ejecuciones.
+Plugin para Claude que audita repositorios de GitHub (plugins, servidores MCP y extensiones de LLM, aunque sirve para código en cualquier lenguaje) y entrega un **informe en español, inglés o francés**, con evidencia trazable y comparable entre ejecuciones.
 
 No se fía de lo que promete el README del proyecto auditado: juzga lo que el código hace de verdad.
 
@@ -12,6 +12,7 @@ No se fía de lo que promete el README del proyecto auditado: juzga lo que el c�
 - **Evidencia obligatoria:** un hallazgo sin `archivo:línea`, función o commit no entra en el informe.
 - **Informe reproducible:** secciones fijas, rúbricas de puntuación ancladas e IDs estables (F1, QW1, CM1…), de modo que dos auditorías del mismo commit se pueden comparar fila a fila.
 - **Reconocimiento determinista:** un script de solo lectura (`recon.sh`) recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (enmascarados) y auditoría de dependencias cuando hay herramientas disponibles. Cada sección termina en `STATUS: ok | failed | skipped`: una sección vacía nunca se confunde con un resultado limpio, y solo la evidencia `ok` admite confianza Alta.
+- **Informe en tres idiomas:** español (por defecto), inglés o francés. Las etiquetas XML, los IDs, los emojis de severidad y las puntuaciones son iguales en los tres, así que un informe en inglés se puede comparar fila a fila con uno en español.
 - **Modo implementación (opcional):** si lo pides, aplica los arreglos que elijas por ID, uno a uno, verificando cada uno y con un commit por arreglo. Nunca hace push ni abre PR sin un permiso aparte.
 
 ## Instalación
@@ -34,7 +35,9 @@ Escribe `/repo-auditor-ia:auditar-repo` o pídelo con lenguaje natural:
 - «Compara las versiones v1.2 y v2.0 del repo»
 - Después del informe: «Ejecuta QW1 y CM2»
 
-Antes de empezar, el auditor te pregunta el nivel de profundidad (triage rápido, auditoría estándar o revisión profunda) y te pide confirmación antes de clonar nada.
+**Idioma del informe:** añade `--lang en` (inglés), `--lang fr` (francés) o `--lang es` al invocar, por ejemplo `/repo-auditor-ia:auditar-repo https://github.com/usuario/proyecto --lang en`, o pídelo en el mensaje («en inglés», «in English», «en français»). Si no lo indicas, el auditor te lo pregunta al empezar; sin respuesta posible, usa el español.
+
+Antes de empezar, el auditor te pregunta el nivel de profundidad (triage rápido, auditoría estándar o revisión profunda) y, si no lo has indicado, el idioma; y te pide confirmación antes de clonar nada.
 
 ## Requisitos y límites
 
@@ -50,7 +53,7 @@ AGENTS.md                              instrucciones para agentes: invariantes, 
 .claude-plugin/plugin.json             manifiesto del plugin
 .claude-plugin/marketplace.json        marketplace propio (instalación directa desde este repo)
 skills/auditar-repo/SKILL.md           la skill: protocolo, pasos y plantilla del informe
-skills/auditar-repo/references/        orquestación de modelos y modo implementación
+skills/auditar-repo/references/        plantillas del informe (es/en/fr), orquestación de modelos y modo implementación
 skills/auditar-repo/scripts/recon.sh   reconocimiento determinista (solo lectura)
 tests/run.sh                           tests de regresión de recon.sh (bash puro, sin red)
 tests/make-trap-repo.sh                genera el «trap repo» sintético contra el que se prueba
@@ -63,6 +66,12 @@ tests/eval/                            eval del propio auditor sobre el trap rep
 Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
+
+**1.2.0** — informe en español, inglés o francés:
+
+- Opción `--lang es|en|fr` al invocar; si no se indica, se pregunta al empezar (español por defecto).
+- La plantilla del informe sale de `SKILL.md` a `references/report-template.{es,en,fr}.md` y solo se carga la del idioma elegido.
+- `check-report.sh` acepta informes en los tres idiomas.
 
 **1.1.2** — clonado más robusto:
 

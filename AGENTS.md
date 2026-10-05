@@ -5,12 +5,13 @@ Instructions for AI agents (and humans) changing this repository.
 ## What this is
 
 A Claude plugin with one skill, `auditar-repo`: a protocol that audits a repository and
-writes a fixed-format report **in Spanish**. The product is mostly prose (`SKILL.md`); the
+writes a fixed-format report **in Spanish (default), English or French** (`--lang es|en|fr`). The product is mostly prose (`SKILL.md`); the
 only executable code is a read-only reconnaissance script and its tests.
 
 ```
 skills/auditar-repo/SKILL.md          the protocol (loaded in full on every invocation)
-skills/auditar-repo/references/       loaded on demand: model routing, implementation mode
+skills/auditar-repo/references/       loaded on demand: report templates (es/en/fr), model routing,
+                                      implementation mode
 skills/auditar-repo/scripts/recon.sh  deterministic evidence pack (read-only)
 tests/run.sh                          regression tests for recon.sh (offline, stubs)
 tests/make-trap-repo.sh               builds the synthetic trap repo the tests run on
@@ -56,16 +57,20 @@ macOS**.
 7. **The report template is a contract.** The 9 XML sections, their order, the F#/QW#/CM#
    IDs and the score anchors make runs comparable; `tests/eval/check-report.sh` depends
    on them. Change them only on purpose, and update the eval in the same commit.
-8. **Language and naming.** User-facing output is Spanish; agent-facing files (this one,
-   `SKILL.md`, `references/`) are English. Never name an AI model as the report's
-   reasoning engine (Model-Naming Constraint in `SKILL.md`).
+8. **Language and naming.** User-facing output follows the report language (es default,
+   en, fr); agent-facing files (this one, `SKILL.md`, `references/`) are English. Language-
+   neutral anchors (XML tags, F#/QW#/CM#, severity emojis, `X/10`, `STATUS:`) never get
+   translated. A change to one `report-template.*.md` must be mirrored in the other two in
+   the same commit. Never name an AI model as the report's reasoning engine
+   (Model-Naming Constraint in `SKILL.md`).
 9. **Mind the footprint.** `SKILL.md` is loaded whole on every invocation. Put
    rarely-needed detail in `references/` and link it.
 
 ## When you change…
 
 - **`recon.sh`** → add or adjust a check in `tests/run.sh` first, watch it fail, then fix.
-- **`SKILL.md` or `references/`** → run the trap-repo eval (`tests/eval/README.md`).
+- **`SKILL.md` or `references/`** → run the trap-repo eval (`tests/eval/README.md`), in every
+  language the change affects.
 - **Any behaviour users can notice** → bump `version` in `.claude-plugin/plugin.json`.
 
 ## Conventions
