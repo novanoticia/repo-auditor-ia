@@ -64,6 +64,11 @@ Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
 
+**1.1.2** — clonado más robusto:
+
+- El workspace se crea y se clona en un solo comando, y los pasos siguientes usan su ruta literal: ya no falla en entornos donde las variables de la shell no sobreviven entre comandos.
+- Clonado parcial (`--filter=blob:none`): la comparación de versiones ve todas las ramas, tags y commits antiguos.
+
 **1.1.1** — correcciones halladas por la primera eval del auditor sobre el trap repo:
 
 - Si un manifiesto está presente pero su auditor no está instalado (p. ej., `pip-audit` o `cargo-audit`), `recon.sh` lo declara como `skipped` en lugar de callarlo.
