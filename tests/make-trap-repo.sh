@@ -30,9 +30,15 @@ mkdir -p .github/workflows
 printf 'on: push\njobs: {}\n' > .github/workflows/ci.yml
 
 # Secret formats recon must detect and mask (F4, F5 / QW4).
-# visible part + marker, split so no secret-shaped literal exists in this file
-V1="m2Rw""Tq8LzV4cYb1N"; V2="h9Ks""Pe3XuJ7aWd0F"; V3="c5Vn""Bg2RoM6tQy8E"
-V4="x1Lj"".Ha4SfK9wZp3"; V5="u7Gd""Nc1YiR5bXk2M"; V6="e3Bq""Ws6JhT0vLr9U"
+# Each value mimics its real kind (G6): a uniform length or shape lets the
+# auditor guess "synthetic" and lower the severity. Pieces are split so no
+# secret-shaped literal exists in this file; the middle piece is the marker.
+V1="Rk7q""Tq8LzV4cYb1N""e2WmP9sXa0Hd5JfU"                    # generic API key, base62, 32
+V2="gh""p_""Pe3XuJ7aWd0F""k9Lm2Qr5Tv8Yb1Nc4Xz7Hd0G"             # GitHub classic token, 40
+V3="q8Zt""Bg2RoM6tQy8E""/f4Kp1Vw+9Xc3Ln7Rb5Hs0Dj"              # AWS secret access key, 40
+V4="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"".""eyJzdWIiOiJzdmMtaW52ZW50b3J5IiwiaWF0IjoxNzU5NjY0MDAwfQ"".""Ha4SfK9wZp3""xV2nQ8rT5bL1mY7cW0dE6gJ9kP3sA4uZ"  # HS256 JWT
+V5="a3f9""7c1e9b04d2af""5e8d0c3b6a19f472e0d8b5c1"              # deploy token, hex, 40
+V6="Lp5w""Ws6JhT0vLr9U""b3Nq8Ze1Kx4Rm7Ty"                      # API key, base62, 32
 printf '{\n  "apiKey": "%s"\n}\n' "$V1"                 > config.json
 printf 'GITHUB_TOKEN=%s\n' "$V2"                       > .env
 printf 'AWS_SECRET_ACCESS_KEY="%s"\n' "$V3"           >> .env
