@@ -46,6 +46,16 @@ Antes de empezar, el auditor te pregunta el nivel de profundidad (triage rápido
 - El contenido del repositorio auditado se trata como **datos, nunca como instrucciones**: si un README o un comentario intenta dirigir al auditor, eso se registra como hallazgo.
 - El informe es una ayuda a la revisión, no una certificación de seguridad. **Requiere revisión humana** antes de actuar sobre él.
 
+## Datos y red
+
+Qué lee, qué escribe y qué sale de tu máquina:
+
+- **Sin servidor propio.** El plugin no tiene servidor, servicio de terceros ni servidores MCP: el autor no recibe ni retiene ningún dato.
+- **Lee** el repositorio que le pidas auditar (código, manifiestos e historial de git). Puede contener datos personales incidentales, como nombres en comentarios o autores de commits. Los trata solo durante la sesión y el informe cita ubicaciones y tipos, nunca valores de secretos.
+- **Escribe** únicamente en un directorio temporal del sistema (el clon de trabajo y la salida del reconocimiento), que borra al terminar. No modifica el repositorio auditado salvo que actives el modo de implementación y lo confirmes.
+- **Red.** Para una URL remota, el auditor clona el repositorio (descarga, no envía) tras pedirte confirmación. Además, si están instalados y el repo tiene lockfile o manifiesto compatible, el reconocimiento ejecuta las herramientas de auditoría de dependencias (`npm audit`, `pip-audit`, `cargo audit`). Esas herramientas consultan sus propias bases de vulnerabilidades y pueden enviar a su registro los nombres y versiones de las dependencias del repo. Si no están instaladas, el reconocimiento lo declara como omitido y no consulta nada.
+- **Tu asistente.** El contenido analizado pasa por el asistente de IA con el que uses el plugin y se rige por las condiciones de ese servicio.
+
 ## Estructura
 
 ```
