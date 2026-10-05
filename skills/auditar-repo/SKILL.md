@@ -1,5 +1,5 @@
 ---
-name: auditar
+name: auditar-repo
 description: >
   Audita repositorios de GitHub (plugins, servidores MCP, extensiones de LLM) en
   fiabilidad, coherencia arquitectónica, deuda técnica y preparación para IA, con un
@@ -7,7 +7,7 @@ description: >
   autoverificación, calibración bayesiana de la confianza), un script de reconocimiento
   determinista y rúbricas fijas que hacen comparables las ejecuciones repetidas. Informe en
   español con hallazgos e IDs estables; un modo de implementación opcional aplica después
-  los arreglos elegidos, verificando cada uno. Úsalo con "/repo-auditor-ia:auditar",
+  los arreglos elegidos, verificando cada uno. Úsalo con "/repo-auditor-ia:auditar-repo",
   "audita este repo", "analiza el plugin", "analiza este MCP", "compara versiones del
   repo", "ejecuta los fixes" o "aplica las mejoras". Clona solo con confirmación cuando
   hay shell/git (si no, auditoría estática); cualquier lenguaje.
@@ -225,7 +225,7 @@ TODO/FIXME density, secret heuristics, and dependency audits when tooling exists
 repeated runs start from identical evidence (execute it; no need to read its source):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/auditar/scripts/recon.sh" "$WORKDIR/repo" | tee "$WORKDIR/recon.txt"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/auditar-repo/scripts/recon.sh" "$WORKDIR/repo" | tee "$WORKDIR/recon.txt"
 ```
 
 > If the path above was not substituted (the variable appears literally, e.g. outside

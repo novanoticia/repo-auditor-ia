@@ -27,7 +27,7 @@ claude plugin install repo-auditor-ia@novanoticia
 
 ## Uso
 
-Escribe `/repo-auditor-ia:auditar` o pídelo con lenguaje natural:
+Escribe `/repo-auditor-ia:auditar-repo` o pídelo con lenguaje natural:
 
 - «Audita este repo: https://github.com/usuario/proyecto»
 - «Analiza este MCP»
@@ -46,11 +46,11 @@ Antes de empezar, el auditor te pregunta el nivel de profundidad (triage rápido
 ## Estructura
 
 ```
-.claude-plugin/plugin.json        manifiesto del plugin
-.claude-plugin/marketplace.json   marketplace propio (instalación directa desde este repo)
-skills/auditar/SKILL.md           la skill: protocolo, pasos y plantilla del informe
-skills/auditar/references/        orquestación de modelos y modo implementación
-skills/auditar/scripts/recon.sh   reconocimiento determinista (solo lectura)
+.claude-plugin/plugin.json             manifiesto del plugin
+.claude-plugin/marketplace.json        marketplace propio (instalación directa desde este repo)
+skills/auditar-repo/SKILL.md           la skill: protocolo, pasos y plantilla del informe
+skills/auditar-repo/references/        orquestación de modelos y modo implementación
+skills/auditar-repo/scripts/recon.sh   reconocimiento determinista (solo lectura)
 ```
 
 ## Historial
