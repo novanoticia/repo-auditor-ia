@@ -42,7 +42,11 @@ done
 [ "$found" -eq 0 ] && echo "none detected"
 
 section "TREE (2 levels, capped at 80 entries)"
-find . -maxdepth 2 -not -path './.git*' -not -path './node_modules*' -not -path './.venv*' \
+# Exact-dir exclusions: a './.git*' prefix would also hide .github/ (CI workflows).
+find . -maxdepth 2 \
+  -not -path './.git' -not -path './.git/*' \
+  -not -path './node_modules' -not -path './node_modules/*' \
+  -not -path './.venv' -not -path './.venv/*' \
   | sort | head -80
 
 section "SIZE"
