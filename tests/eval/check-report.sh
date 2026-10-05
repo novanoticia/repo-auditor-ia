@@ -8,9 +8,9 @@ set -u
 REPORT="${1:?usage: check-report.sh <report.md>}"
 [ -r "$REPORT" ] || { echo "cannot read $REPORT"; exit 1; }
 
-pass=0; fail=0
-ok() { pass=$((pass + 1)); echo "  ok   $1"; }
-ko() { fail=$((fail + 1)); echo "  FAIL $1"; }
+n_ok=0; n_ko=0
+ok() { n_ok=$((n_ok + 1)); echo "  ok   $1"; }
+ko() { n_ko=$((n_ko + 1)); echo "  FAIL $1"; }
 has() { grep -qiE -- "$1" "$REPORT"; }
 
 # Rule 8 — no planted value may leak past its first 4 chars.
@@ -50,5 +50,5 @@ if [ "$rows" -gt 0 ] && [ "$bad" -eq 0 ]; then ok "$rows finding rows with sever
 else ko "finding rows with severity + confidence ($rows rows, $bad malformed)"; fi
 
 echo
-echo "passed: $pass  failed: $fail"
-[ "$fail" -eq 0 ]
+echo "passed: $n_ok  failed: $n_ko"
+[ "$n_ko" -eq 0 ]
