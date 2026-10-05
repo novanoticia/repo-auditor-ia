@@ -127,7 +127,7 @@ hits=$(printf '%s\n' "$raw" | head -10 | mask_secrets); unset raw
 if [ -n "$hits" ]; then echo "$hits"; else echo "no obvious hits (heuristic, not proof of absence)"; fi
 grep_status "$rc"
 
-section "DEPENDENCY AUDIT (runs only if tooling is present)"
+section "DEPENDENCY AUDIT (one STATUS per detected manifest)"
 # run_audit <label> <cmd...> — runs one auditor and ALWAYS prints a STATUS line,
 # so an empty section can never be mistaken for a clean result. A non-zero exit
 # is not a failure by itself: npm, pip-audit and cargo-audit all exit non-zero
@@ -146,39 +146,45 @@ run_audit() {
     echo "STATUS: failed (exit $rc) — output above is NOT a clean result; declare it in <limites>"
   fi
 }
-ran=0
-if [ -f package.json ] && command -v npm >/dev/null 2>&1; then
-  ran=1
-  if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+# One block per detected manifest: each ALWAYS ends in a STATUS line, including
+# when its auditor is not installed (a missing tool is a skip, never silence).
+skip() { echo "-- $1 --"; status "skipped ($2)"; }
+manifests=0
+if [ -f package.json ]; then
+  manifests=1
+  if ! command -v npm >/dev/null 2>&1; then
+    skip "npm audit" "npm not installed — review package.json manually"
+  elif [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
     run_audit "npm audit" npm audit --omit=dev
   else
-    echo "-- npm audit --"
-    echo "STATUS: skipped (no package-lock.json/npm-shrinkwrap.json — npm audit needs a lockfile)"
+    skip "npm audit" "no package-lock.json/npm-shrinkwrap.json — npm audit needs a lockfile"
   fi
 fi
-if { [ -f pyproject.toml ] || [ -f requirements.txt ]; } && command -v pip-audit >/dev/null 2>&1; then
-  ran=1
+if [ -f pyproject.toml ] || [ -f requirements.txt ]; then
+  manifests=1
   # Bare `pip-audit` audits the *auditor's* Python environment, not the repo.
   # --no-deps --disable-pip checks the pinned requirements without installing
   # anything; `pip-audit .` would build the project, i.e. run its code (Rule 7).
-  if [ -f requirements.txt ]; then
+  if ! command -v pip-audit >/dev/null 2>&1; then
+    skip "pip-audit" "pip-audit not installed — review Python dependencies manually"
+  elif [ -f requirements.txt ]; then
     run_audit "pip-audit" pip-audit -r requirements.txt --no-deps --disable-pip
   else
-    echo "-- pip-audit --"
-    echo "STATUS: skipped (pyproject.toml only — auditing it would build the project and run its code; review dependencies manually)"
+    skip "pip-audit" "pyproject.toml only — auditing it would build the project and run its code; review dependencies manually"
   fi
 fi
-if [ -f Cargo.toml ] && command -v cargo-audit >/dev/null 2>&1; then
-  ran=1
-  if [ -f Cargo.lock ]; then
+if [ -f Cargo.toml ]; then
+  manifests=1
+  if ! command -v cargo-audit >/dev/null 2>&1; then
+    skip "cargo audit" "cargo-audit not installed — review Cargo.toml manually"
+  elif [ -f Cargo.lock ]; then
     run_audit "cargo audit" cargo audit
   else
-    echo "-- cargo audit --"
-    echo "STATUS: skipped (no Cargo.lock — cargo audit needs a lockfile)"
+    skip "cargo audit" "no Cargo.lock — cargo audit needs a lockfile"
   fi
 fi
-if [ "$ran" -eq 0 ]; then
-  echo "STATUS: skipped (no audit tooling for the detected manifests — declare it in <limites> and reason manually from manifests)"
+if [ "$manifests" -eq 0 ]; then
+  status "skipped (no npm/Python/Cargo manifest at root — nothing to audit automatically)"
 fi
 
 printf '\n== END OF PACK ==\n'
