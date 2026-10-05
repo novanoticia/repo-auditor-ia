@@ -46,6 +46,7 @@ Antes de empezar, el auditor te pregunta el nivel de profundidad (triage rápido
 ## Estructura
 
 ```
+AGENTS.md                              instrucciones para agentes: invariantes, comandos, convenciones
 .claude-plugin/plugin.json             manifiesto del plugin
 .claude-plugin/marketplace.json        marketplace propio (instalación directa desde este repo)
 skills/auditar-repo/SKILL.md           la skill: protocolo, pasos y plantilla del informe
