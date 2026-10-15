@@ -1,6 +1,7 @@
 # Repo Auditor IA
 
-[![Versión actual en main](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fnovanoticia%2Frepo-auditor-ia%2Fmain%2Fplugin%2F.claude-plugin%2Fplugin.json&query=%24.version&prefix=v&label=Versi%C3%B3n%20actual%20en%20main&color=blue)](https://github.com/novanoticia/repo-auditor-ia/blob/main/plugin/.claude-plugin/plugin.json)
+[![Versión en main](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fnovanoticia%2Frepo-auditor-ia%2Fmain%2Fplugin%2F.claude-plugin%2Fplugin.json&query=%24.version&prefix=v&label=Versi%C3%B3n%20en%20main&color=blue)](https://github.com/novanoticia/repo-auditor-ia/blob/main/plugin/.claude-plugin/plugin.json)
+**Última versión publicada:** Sin releases publicadas · [Ver publicaciones](https://github.com/novanoticia/repo-auditor-ia/releases)
 
 Plugin para Claude que audita repositorios de GitHub (plugins, servidores MCP y extensiones de LLM, aunque sirve para código en cualquier lenguaje) y entrega un **informe en español, inglés o francés**, con evidencia trazable y comparable entre ejecuciones.
 
