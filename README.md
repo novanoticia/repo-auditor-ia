@@ -61,6 +61,15 @@ Qué lee, qué escribe y qué sale de tu máquina:
 - **Red.** Para una URL remota, el auditor clona el repositorio (descarga, no envía) tras pedirte confirmación. Además, si están instalados y el repo tiene lockfile o manifiesto compatible, el reconocimiento ejecuta las herramientas de auditoría de dependencias (`npm audit`, `pip-audit`, `cargo audit`). Esas herramientas consultan sus propias bases de vulnerabilidades y pueden enviar a su registro los nombres y versiones de las dependencias del repo. Si no están instaladas, el reconocimiento lo declara como omitido y no consulta nada.
 - **Tu asistente.** El contenido analizado pasa por el asistente de IA con el que uses el plugin y se rige por las condiciones de ese servicio.
 
+## Revisión de pull requests
+
+La CI de este repositorio puede enviar a la API de Mistral el título, la
+descripción, las reglas del proyecto, el diff y contexto de código para analizar
+un PR. Es infraestructura del repositorio, fuera del plugin publicado: no cambia
+el reconocimiento ni los informes que genera la skill. El revisor solo comenta,
+sin aplicar parches; conserva un informe por ejecución. Configuración, filtrado
+de asignaciones sensibles y límites en [.github/MISTRAL.md](.github/MISTRAL.md).
+
 ## Estructura
 
 ```
