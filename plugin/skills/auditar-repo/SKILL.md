@@ -4,8 +4,8 @@ description: >
   Audita repositorios de GitHub (plugins, servidores MCP, extensiones de LLM) en
   fiabilidad, coherencia arquitectónica, deuda técnica y preparación para IA, con un
   protocolo de razonamiento estructurado (descomposición, hipótesis alternativas,
-  autoverificación, calibración bayesiana de la confianza), un script de reconocimiento
-  determinista y rúbricas fijas que hacen comparables las ejecuciones repetidas. Informe en
+  autoverificación, calibración bayesiana de la confianza), un reconocimiento con
+  contrato de evidencias y rúbricas fijas que hacen comparables las ejecuciones repetidas. Informe en
   español con hallazgos e IDs estables; un modo de implementación opcional aplica después
   los arreglos elegidos, verificando cada uno. Úsalo con "/repo-auditor-ia:auditar-repo",
   "audita este repo", "analiza el plugin", "analiza este MCP", "compara versiones del
@@ -29,7 +29,7 @@ promises, but on what the code actually does.
 
 **Audit at a glance:** Step 0 scope & consent (environment auto-detect, effort level) →
 1–2 get repo & clone with confirmation (or MODO ESTÁTICO) → 3 reconnaissance
-(`scripts/recon.sh` evidence pack + triage) → 3.5 delegate heavy slices to sub-agents when
+(evidence pack with `STATUS:` contract + triage) → 3.5 delegate heavy slices to sub-agents when
 needed → 4 deep audit along the four R1 axes → 5–6 AI-readiness question + non-obvious
 recommendation → 7 self-verification (R4) → 8 fixed-format report (es/en/fr) → 9 next steps
 and cleanup → 10 *(opt-in)* Implementation Mode: apply user-selected fixes with per-fix
@@ -37,7 +37,7 @@ verification, reusing the same model-orchestration policy.
 
 The audit is never a single pass: an explicit **internal reasoning protocol** — decompose
 (R1), alternative hypotheses (R2), Bayesian confidence calibration (R3), self-verification
-(R4) — plus the deterministic recon pack and fixed rubrics make results deep and
+(R4) — plus the recon evidence pack and fixed rubrics make results deep and
 **comparable across repeated runs**.
 
 ## ⚠️ LANGUAGE — Read First
@@ -104,8 +104,8 @@ engine when *presenting its conclusions*.
    and to Implementation Mode (Step 10) too. Never execute the target repo's own code,
    install scripts, or hooks unless the user explicitly asks in Step 10.
 8. **Don't leak secrets.** When a secret candidate is found, cite its location and type
-   only; never reproduce its value in chat or in the report (the recon script already
-   masks values).
+   only; never reproduce its value in chat or in the report (search for locations, not
+   values).
 
 **Severity anchors (Rule 4 — apply the same scale every run):**
 - 🔴 **Critical** — exploitable vulnerability, data loss, or crash on a normal execution path.
@@ -241,33 +241,39 @@ If the clone fails (private repo, wrong URL), explain the problem and ask for he
 > single local file, **do NOT run any of the commands above** and do NOT invent their
 > output. Skip cloning, audit the provided files statically, and record in `<limites>`
 > which R1 axes ended with partial coverage. In the report, Commit is `n/a — modo estático`
-> (Rule 6 forbids fabricating a hash). The dynamic steps below (recon script, git history,
+> (Rule 6 forbids fabricating a hash). The dynamic steps below (reconnaissance commands, git history,
 > `Step 4f` tooling) are simply unavailable — say so rather than pretending.
 
 ## Step 3 — Reconnaissance & Ecosystem
 
-**Shell mode: run the bundled recon script first.** It produces a deterministic evidence
-pack — commit, tree, manifests, AI/agent artifacts, git hotspots, largest files,
-TODO/FIXME density, secret heuristics, and dependency audits when tooling exists — so
-repeated runs start from identical evidence (execute it; no need to read its source):
+**Shell mode: build the evidence pack first** — commit, tree, manifests, AI/agent
+artifacts, git hotspots, largest files, TODO/FIXME density, secret heuristics, and
+dependency audits when tooling exists. The plugin ships no executable code, so there are
+two ways to get it:
 
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/auditar-repo/scripts/recon.sh" "<WORKDIR>/repo" | tee "<WORKDIR>/recon.txt"
-```
+- **Manual (the default for an installed plugin).** Read `references/manual-recon.md` and
+  collect the sections yourself, read-only, closing each one with its `STATUS:` line.
+- **Deterministic script (only if already on this machine).** `recon.sh` lives in the
+  project's repository, outside the plugin. Use it only when the user gives you its path
+  or `${CLAUDE_PLUGIN_ROOT}/../scripts/recon.sh` exists (plugin run from a clone). Never
+  download it to run it.
 
-> If the path above was not substituted (the variable appears literally, e.g. outside
-> Claude Code), run `scripts/recon.sh` from the directory that contains this `SKILL.md`.
-> `recon.sh --json <dir>` emits the same pack as JSON (each section with its worst
-> `STATUS`), handy for comparing two runs programmatically; the text pack stays the default.
+  ```bash
+  bash "<path>/recon.sh" "<WORKDIR>/repo" | tee "<WORKDIR>/recon.txt"
+  ```
 
-*(Static mode: skip the script and collect the same items manually from what the user
-pastes.)*
+  Execute it; no need to read its source. `recon.sh --json <dir>` emits the same pack as
+  JSON, handy for comparing two runs programmatically.
+
+*(Static mode: neither applies; collect the same items from what the user pastes.)*
 
 **Evidence contract (tri-state).** Every recon section ends with `STATUS: ok`,
 `STATUS: failed (…)` or `STATUS: skipped (…)`. Read the status before the content: an empty
-section is **never** a clean result. Only `ok` evidence may back a confidence **Alta**;
-every `failed`/`skipped` line goes to `<limites>` with its reason, and the corresponding
-check is either redone by hand (confidence **Media/Baja**) or declared not covered.
+section is **never** a clean result. Only `ok` evidence **from the script** may back a
+confidence **Alta**; `ok` evidence collected by hand backs **Media** at most, and
+`<limites>` says the reconnaissance was manual. Every `failed`/`skipped` line goes to
+`<limites>` with its reason, and the corresponding check is either redone by hand
+(confidence **Media/Baja**) or declared not covered.
 
 Then build the mental map on top of the evidence pack (feeds R1 axes 1–2):
 
@@ -396,11 +402,12 @@ large-file loads, outdated dependencies with known CVEs. Distinguish irrelevant
 micro-optimization from genuine operational risk.
 
 ### 4f. Security tooling (when available)
-Prefer real tooling over eyeballing. The recon script (Step 3) already attempts dependency
+Prefer real tooling over eyeballing. The reconnaissance (Step 3) already attempts dependency
 audits (`npm audit` / `pip-audit` / `cargo audit`) and a secret-pattern sweep; deepen with
 dedicated scanners (`gitleaks`, `trufflehog`) and an SBOM/dependency review for
 supply-chain risk when the effort level warrants it. Report tool output as evidence
-(confidence **Alta**) **only when its recon line says `STATUS: ok`**; a `failed` or
+(confidence **Alta**) **only when its recon line says `STATUS: ok` and the pack came from the
+script** (manual pack: **Media**); a `failed` or
 `skipped` tool is a coverage gap for `<limites>`, never an implicit "no vulnerabilities".
 **In static mode (no shell), these tools are unavailable:** say so explicitly, reason from the manifest/text manually (confidence **Media/Baja**), and never
 present imagined tool output as real.
@@ -562,7 +569,7 @@ and follow it; the contract in one breath:
 - **Mind your own footprint** — this skill loads into context; keep the audit focused and
   don't pad the report. Brevity is part of the deliverable.
 
-## Reference files & scripts
+## Reference files
 
 - `references/model-routing.md` — frontier-model orchestration: role definitions, how to
   check a model's live safeguards/quota/permitted-use online, how to map roles onto the
@@ -573,7 +580,7 @@ and follow it; the contract in one breath:
   branch and baseline, the per-fix loop, the implementation sub-agent contract (model
   alternation during fixes), failure handling, static-mode patches, and the
   `<implementacion>` report shape. Read it only when the user asks to apply fixes.
-- `scripts/recon.sh` — deterministic reconnaissance evidence pack for Step 3 (commit, tree,
-  manifests, AI artifacts, hotspots, TODO density, secret heuristics, dependency audits).
-  Execute it in shell mode; don't load its source into context. It is read-only and
-  degrades gracefully when tools are missing.
+- `references/manual-recon.md` — the Step 3 reconnaissance checklist when the
+  deterministic script is not on the machine (the normal case for an installed plugin):
+  sections, read-only commands, status lines and the Media confidence cap. Read it at
+  Step 3.

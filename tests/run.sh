@@ -6,7 +6,7 @@
 
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-RECON="$ROOT/plugin/skills/auditar-repo/scripts/recon.sh"
+RECON="$ROOT/scripts/recon.sh"
 STUBS="$ROOT/tests/stubs"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -183,6 +183,30 @@ run_recon "$PLAIN"
 if [ "$RC" -eq 0 ]; then ok "exits 0 without git"; else ko "exits 0 without git (got $RC)"; fi
 check "commit section skipped without git" 'STATUS: skipped \(not a git repo'
 check "hotspots skipped without git"       'STATUS: skipped \(not a git repo\)$'
+
+echo "plugin/ — directory policy"
+# The plugin directory refuses scripts from non-Verified organizations: plugin/
+# may hold only Markdown, JSON and PNG, and nothing that starts with a shebang.
+bad=""
+while IFS= read -r f; do
+  case "$f" in
+    *.md|*.json|*.png) ;;
+    *) bad="$bad $f" ;;
+  esac
+  if [ "$(head -c 2 "$f")" = "#!" ]; then bad="$bad $f"; fi
+done <<EOF_FILES
+$(find "$ROOT/plugin" -type f | sort)
+EOF_FILES
+if [ -z "$bad" ]; then ok "plugin ships no executable code"; else ko "plugin ships no executable code:$bad"; fi
+# The manual checklist must search with the script's own key-name pattern, or
+# switching reconnaissance modes silently loses candidates (apiKey, privateKey).
+names="$(grep '^KEYVAL_REGEX=' "$RECON" | sed -e "s/^KEYVAL_REGEX='//" -e 's/)\[A-Za-z0-9_\]\*.*/)/')"
+if [ -n "$names" ] && grep -qF -- "$names" "$ROOT/plugin/skills/auditar-repo/references/manual-recon.md"; then
+  ok "manual recon uses the script's secret key-name pattern"
+else ko "manual recon uses the script's secret key-name pattern ($names)"; fi
+if grep -q 'skills/auditar-repo/scripts/' "$ROOT/plugin/skills/auditar-repo/SKILL.md"; then
+  ko "SKILL.md does not point at a bundled script"
+else ok "SKILL.md does not point at a bundled script"; fi
 
 echo "eval/check-report.sh — section order"
 # A correct report that mentions a section inline ("ver `<epistemico>`") must
