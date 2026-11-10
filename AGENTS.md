@@ -5,14 +5,15 @@ Instructions for AI agents (and humans) changing this repository.
 ## What this is
 
 A Claude plugin with one skill, `auditar-repo`: a protocol that audits a repository and
-writes a fixed-format report **in Spanish (default), English or French** (`--lang es|en|fr`). The product is mostly prose (`SKILL.md`); the
-only executable code is a read-only reconnaissance script and its tests.
+writes a fixed-format report **in Spanish (default), English or French** (`--lang es|en|fr`). The published plugin is prose only (`SKILL.md`
+and its references); the only executable code is a read-only reconnaissance script and its
+tests, which live outside `plugin/`.
 
 ```
 plugin/skills/auditar-repo/SKILL.md   the protocol (loaded in full on every invocation)
 plugin/skills/auditar-repo/references/ loaded on demand: report templates (es/en/fr), model routing,
-                                      implementation mode
-scripts/recon.sh  deterministic evidence pack (read-only)
+                                      implementation mode, manual reconnaissance
+scripts/recon.sh                      deterministic evidence pack (read-only; NOT shipped in the plugin)
 tests/run.sh                          regression tests for recon.sh (offline, stubs)
 tests/make-trap-repo.sh               builds the synthetic trap repo the tests run on
 tests/trap-markers.txt                per-value leak markers (kept outside the generated repo)
@@ -43,8 +44,10 @@ macOS**.
    The test `trap repo untouched` guards the read-only half.
 2. **Tri-state output contract.** Every recon section ends with
    `STATUS: ok | failed | skipped (<reason>)`. An empty section must never be readable as
-   a clean result. `SKILL.md` (Step 3, Step 4f) only lets `ok` evidence back confidence
-   **Alta**. A new section needs a status line *and* a test. `--json` is derived from
+   a clean result. `SKILL.md` (Step 3, Step 4f) only lets `ok` evidence **from the script**
+   back confidence **Alta**; the manual reconnaissance (`references/manual-recon.md`) keeps
+   the same status lines but caps at **Media**. Keep that checklist in step with the
+   script's sections. A new section needs a status line *and* a test. `--json` is derived from
    the text pack (`to_json`), so keep the `== NAME ==` / `-- check --` / `STATUS:` line
    formats; a section without `STATUS` comes out as `failed` in JSON.
 3. **Exit codes are not verdicts.** `npm audit`, `pip-audit` and `cargo audit` exit
@@ -67,7 +70,10 @@ macOS**.
    translated. A change to one `report-template.*.md` must be mirrored in the other two in
    the same commit. Never name an AI model as the report's reasoning engine
    (Model-Naming Constraint in `SKILL.md`).
-9. **Mind the footprint.** `SKILL.md` is loaded whole on every invocation. Put
+9. **`plugin/` carries no executable code.** The plugin directory only accepts scripts
+   from Verified organizations, so `plugin/` holds Markdown, JSON and the PNG icon, and
+   nothing starting with `#!`. The test `plugin ships no executable code` guards this.
+10. **Mind the footprint.** `SKILL.md` is loaded whole on every invocation. Put
    rarely-needed detail in `references/` and link it.
 
 ## When you change…

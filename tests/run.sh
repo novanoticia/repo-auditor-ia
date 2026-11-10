@@ -184,6 +184,24 @@ if [ "$RC" -eq 0 ]; then ok "exits 0 without git"; else ko "exits 0 without git 
 check "commit section skipped without git" 'STATUS: skipped \(not a git repo'
 check "hotspots skipped without git"       'STATUS: skipped \(not a git repo\)$'
 
+echo "plugin/ — directory policy"
+# The plugin directory refuses scripts from non-Verified organizations: plugin/
+# may hold only Markdown, JSON and PNG, and nothing that starts with a shebang.
+bad=""
+while IFS= read -r f; do
+  case "$f" in
+    *.md|*.json|*.png) ;;
+    *) bad="$bad $f" ;;
+  esac
+  if [ "$(head -c 2 "$f")" = "#!" ]; then bad="$bad $f"; fi
+done <<EOF_FILES
+$(find "$ROOT/plugin" -type f | sort)
+EOF_FILES
+if [ -z "$bad" ]; then ok "plugin ships no executable code"; else ko "plugin ships no executable code:$bad"; fi
+if grep -q 'skills/auditar-repo/scripts/' "$ROOT/plugin/skills/auditar-repo/SKILL.md"; then
+  ko "SKILL.md does not point at a bundled script"
+else ok "SKILL.md does not point at a bundled script"; fi
+
 echo "eval/check-report.sh — section order"
 # A correct report that mentions a section inline ("ver `<epistemico>`") must
 # not count as a duplicated section (G3).
