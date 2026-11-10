@@ -12,7 +12,7 @@ only executable code is a read-only reconnaissance script and its tests.
 plugin/skills/auditar-repo/SKILL.md   the protocol (loaded in full on every invocation)
 plugin/skills/auditar-repo/references/ loaded on demand: report templates (es/en/fr), model routing,
                                       implementation mode
-plugin/skills/auditar-repo/scripts/recon.sh  deterministic evidence pack (read-only)
+scripts/recon.sh  deterministic evidence pack (read-only)
 tests/run.sh                          regression tests for recon.sh (offline, stubs)
 tests/make-trap-repo.sh               builds the synthetic trap repo the tests run on
 tests/trap-markers.txt                per-value leak markers (kept outside the generated repo)
@@ -26,10 +26,10 @@ plugin/.claude-plugin/plugin.json    plugin manifest (the published plugin is on
 
 ```bash
 bash tests/run.sh                                   # must be green before every commit
-shellcheck plugin/skills/auditar-repo/scripts/recon.sh tests/*.sh tests/eval/*.sh tests/stubs/*
+shellcheck scripts/recon.sh tests/*.sh tests/eval/*.sh tests/stubs/*
 bash tests/make-trap-repo.sh /tmp/inventory-sync    # then audit it; see tests/eval/README.md
 bash tests/eval/check-report.sh report.md           # automatic part of the eval
-bash plugin/skills/auditar-repo/scripts/recon.sh --json .  # recon pack as JSON
+bash scripts/recon.sh --json .  # recon pack as JSON
 ```
 
 CI (`.github/workflows/ci.yml`) runs shellcheck on Linux and the tests on Linux **and

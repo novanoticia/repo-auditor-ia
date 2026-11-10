@@ -78,7 +78,7 @@ plugin/.claude-plugin/plugin.json      manifiesto del plugin
 .claude-plugin/marketplace.json        marketplace propio (instalación directa desde este repo)
 plugin/skills/auditar-repo/SKILL.md           la skill: protocolo, pasos y plantilla del informe
 plugin/skills/auditar-repo/references/        plantillas del informe (es/en/fr), orquestación de modelos y modo implementación
-plugin/skills/auditar-repo/scripts/recon.sh   reconocimiento determinista (solo lectura)
+scripts/recon.sh   reconocimiento determinista (solo lectura)
 tests/run.sh                           tests de regresión de recon.sh (bash puro, sin red)
 tests/make-trap-repo.sh                genera el «trap repo» sintético contra el que se prueba
 tests/trap-markers.txt                 marcadores de fuga, uno por valor plantado (fuera del repo generado)
