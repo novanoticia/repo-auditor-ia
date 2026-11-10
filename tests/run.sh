@@ -198,6 +198,12 @@ done <<EOF_FILES
 $(find "$ROOT/plugin" -type f | sort)
 EOF_FILES
 if [ -z "$bad" ]; then ok "plugin ships no executable code"; else ko "plugin ships no executable code:$bad"; fi
+# The manual checklist must search with the script's own key-name pattern, or
+# switching reconnaissance modes silently loses candidates (apiKey, privateKey).
+names="$(grep '^KEYVAL_REGEX=' "$RECON" | sed -e "s/^KEYVAL_REGEX='//" -e 's/)\[A-Za-z0-9_\]\*.*/)/')"
+if [ -n "$names" ] && grep -qF -- "$names" "$ROOT/plugin/skills/auditar-repo/references/manual-recon.md"; then
+  ok "manual recon uses the script's secret key-name pattern"
+else ko "manual recon uses the script's secret key-name pattern ($names)"; fi
 if grep -q 'skills/auditar-repo/scripts/' "$ROOT/plugin/skills/auditar-repo/SKILL.md"; then
   ko "SKILL.md does not point at a bundled script"
 else ok "SKILL.md does not point at a bundled script"; fi
