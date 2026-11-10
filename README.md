@@ -16,7 +16,8 @@ No se fía de lo que promete el README del proyecto auditado: juzga lo que el c�
 - **Severidad y confianza por separado:** un hallazgo puede ser grave y, a la vez, de confianza baja, y el informe lo muestra así.
 - **Evidencia obligatoria:** un hallazgo sin `archivo:línea`, función o commit no entra en el informe.
 - **Informe reproducible:** secciones fijas, rúbricas de puntuación ancladas e IDs estables (F1, QW1, CM1…), de modo que dos auditorías del mismo commit se pueden comparar fila a fila.
-- **Reconocimiento determinista:** un script de solo lectura (`recon.sh`) recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (enmascarados) y auditoría de dependencias cuando hay herramientas disponibles. Cada sección termina en `STATUS: ok | failed | skipped`: una sección vacía nunca se confunde con un resultado limpio, y solo la evidencia `ok` admite confianza Alta. Con `--json` emite lo mismo en JSON, con el estado de cada sección, para compararlo o procesarlo con otras herramientas.
+- **Reconocimiento con contrato de evidencias:** antes de opinar, el auditor recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (citados por ubicación, nunca por valor) y auditoría de dependencias cuando hay herramientas disponibles. Cada sección termina en `STATUS: ok | failed | skipped`: una sección vacía nunca se confunde con un resultado limpio. El plugin instalado lo hace a mano, siguiendo una lista fija, y esa evidencia admite confianza Media como máximo.
+- **Reconocimiento determinista (opcional, desde este repositorio):** el script de solo lectura `scripts/recon.sh` produce el mismo paquete de forma reproducible, y solo su evidencia `ok` admite confianza Alta. No viaja con el plugin, porque el directorio de Claude no admite código ejecutable de cuentas no verificadas: para usarlo, clona este repositorio e indica al auditor la ruta del script. Con `--json` emite lo mismo en JSON, para compararlo o procesarlo con otras herramientas.
 - **Informe en tres idiomas:** español (por defecto), inglés o francés. Las etiquetas XML, los IDs, los emojis de severidad y las puntuaciones son iguales en los tres, así que un informe en inglés se puede comparar fila a fila con uno en español.
 - **Modo implementación (opcional):** si lo pides, aplica los arreglos que elijas por ID, uno a uno, verificando cada uno y con un commit por arreglo. Nunca hace push ni abre PR sin un permiso aparte.
 
@@ -56,6 +57,7 @@ Antes de empezar, el auditor te pregunta el nivel de profundidad (triage rápido
 Qué lee, qué escribe y qué sale de tu máquina:
 
 - **Sin servidor propio.** El plugin no tiene servidor, servicio de terceros ni servidores MCP: el autor no recibe ni retiene ningún dato.
+- **Sin código ejecutable.** El plugin publicado solo contiene texto (el protocolo y sus plantillas) y el icono. El reconocimiento lo hace tu asistente con sus propias herramientas de lectura y búsqueda, en modo de solo lectura y sin ejecutar el código del repositorio auditado.
 - **Lee** el repositorio que le pidas auditar (código, manifiestos e historial de git). Puede contener datos personales incidentales, como nombres en comentarios o autores de commits. Los trata solo durante la sesión y el informe cita ubicaciones y tipos, nunca valores de secretos.
 - **Escribe** únicamente en un directorio temporal del sistema (el clon de trabajo y la salida del reconocimiento), que borra al terminar. No modifica el repositorio auditado salvo que actives el modo de implementación y lo confirmes.
 - **Red.** Para una URL remota, el auditor clona el repositorio (descarga, no envía) tras pedirte confirmación. Además, si están instalados y el repo tiene lockfile o manifiesto compatible, el reconocimiento ejecuta las herramientas de auditoría de dependencias (`npm audit`, `pip-audit`, `cargo audit`). Esas herramientas consultan sus propias bases de vulnerabilidades y pueden enviar a su registro los nombres y versiones de las dependencias del repo. Si no están instaladas, el reconocimiento lo declara como omitido y no consulta nada.
@@ -77,8 +79,8 @@ AGENTS.md                              instrucciones para agentes: invariantes, 
 plugin/.claude-plugin/plugin.json      manifiesto del plugin
 .claude-plugin/marketplace.json        marketplace propio (instalación directa desde este repo)
 plugin/skills/auditar-repo/SKILL.md           la skill: protocolo, pasos y plantilla del informe
-plugin/skills/auditar-repo/references/        plantillas del informe (es/en/fr), orquestación de modelos y modo implementación
-scripts/recon.sh   reconocimiento determinista (solo lectura)
+plugin/skills/auditar-repo/references/        plantillas del informe (es/en/fr), orquestación de modelos, modo implementación y reconocimiento manual
+scripts/recon.sh                       reconocimiento determinista (solo lectura; no forma parte del plugin publicado)
 tests/run.sh                           tests de regresión de recon.sh (bash puro, sin red)
 tests/make-trap-repo.sh                genera el «trap repo» sintético contra el que se prueba
 tests/trap-markers.txt                 marcadores de fuga, uno por valor plantado (fuera del repo generado)
@@ -90,6 +92,12 @@ tests/eval/                            eval del propio auditor sobre el trap rep
 Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
+
+**1.4.0** — el plugin publicado deja de llevar código ejecutable:
+
+- `recon.sh` sale del plugin y pasa a `scripts/recon.sh`, en este repositorio. El directorio de Claude solo admite scripts de organizaciones verificadas.
+- El plugin instalado hace el reconocimiento a mano, con la misma lista de secciones y el mismo contrato `STATUS`; esa evidencia admite confianza Media como máximo y el informe lo declara en sus límites. Quien tenga el script en su máquina puede seguir usándolo.
+- Un test impide que vuelva a entrar código ejecutable en `plugin/`. El icono ya no lleva metadatos de edición.
 
 **1.3.0** — `recon.sh --json`:
 
