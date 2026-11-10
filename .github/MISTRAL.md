@@ -29,8 +29,11 @@ en curso; si se cancela antes de publicar, puede no quedar comentario.
 
 El modelo debe dar escenarios, comprobaciones pendientes y citas del diff.
 Las citas se validan literalmente; las comprobaciones de rutas admiten
-renombrados, permisos y binarios sin hunks. Una respuesta inválida o fallo de API
-hace fallar el check, pero no demuestra un defecto del código. El resumen de
+renombrados, permisos y binarios sin hunks. Si la respuesta llega pero no
+valida, se pide una segunda vez; un fallo de API no se repite por esta vía. El
+registro de Actions y el comentario nombran la regla incumplida, nunca el
+contenido de la respuesta. Dos respuestas inválidas o un fallo de API hacen
+fallar el check, pero no demuestran un defecto del código. El resumen de
 Actions se escribe antes de publicar para conservarlo si falla GitHub.
 
 Se envían hasta 150.000 caracteres de diff, 20.000 de guía y 10.000 por archivo

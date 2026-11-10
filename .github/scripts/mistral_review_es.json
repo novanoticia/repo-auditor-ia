@@ -25,5 +25,13 @@
   "mensaje_24": "::error::No se pudo publicar el comentario; consulta el resumen de Actions.",
   "etiqueta_escenario": "Escenario",
   "etiqueta_fragmento": "Fragmento",
-  "etiqueta_arreglo": "Arreglo"
+  "etiqueta_arreglo": "Arreglo",
+  "mensaje_25": "::warning::Respuesta de Mistral no válida (intento %d de %d): %s.",
+  "mensaje_26": "Regla incumplida en el último de %d intentos: %s.",
+  "motivo_json": "la respuesta no es JSON",
+  "motivo_esquema": "faltan el resumen o la lista de hallazgos",
+  "motivo_comprobaciones": "las comprobaciones no son entre 1 y 6 o están incompletas",
+  "motivo_ruta": "una comprobación cita un archivo que no está en el diff",
+  "motivo_hallazgo": "un hallazgo está incompleto o tiene una severidad desconocida",
+  "motivo_cita": "el fragmento de un hallazgo no coincide con ninguna línea del diff"
 }
