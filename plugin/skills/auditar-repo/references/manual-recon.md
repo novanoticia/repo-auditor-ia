@@ -20,8 +20,11 @@ collect the same evidence by hand, with your own tools, following this checklist
 - **Declare it.** Add one line to `<limites>`: the reconnaissance was done by hand, not
   with the deterministic script, so repeated runs may differ in detail.
 - **No secret values.** When a search could match a credential, ask the tool for file
-  names and line numbers only, not the matching text. If a value reaches you anyway, never
-  repeat it (Rule 8): cite location and type.
+  names and line numbers only, never the matching text: `grep -rniE '<pattern>' . | cut
+  -d: -f1,2`, `grep -l`, `rg --files-with-matches`, or a search tool's "files with
+  matches" mode. A bare `grep -r` prints the value into your context. The evidence pack
+  and your notes hold locations and types only. If a value reaches you anyway, never
+  write it down or repeat it (Rule 8): cite location and type.
 - **Exclusions.** Skip `.git`, `node_modules`, `vendor`, `dist`, `build`, `__pycache__`
   and `.venv` everywhere, and say so in the status line.
 
