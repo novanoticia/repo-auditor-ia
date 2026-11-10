@@ -33,6 +33,9 @@ MAX_GUIA = 20_000
 MAX_CONTEXTO = 40_000
 MAX_ARCHIVO = 10_000
 MAX_ESPERA = 60     # no reintentar antes de Retry-After si supera este limite
+# Solicitudes por revision cuando la respuesta llega pero no valida: el modelo
+# no es determinista y una segunda respuesta suele cumplir el esquema.
+INTENTOS_RESPUESTA = 2
 EXCLUIDOS = ()  # Tambien se revisan las traducciones; no hay golden generados.
 SEVERIDADES = {"alta": "🔴", "media": "🟠", "baja": "🟡"}
 
@@ -267,21 +270,25 @@ def llamar_mistral(mensajes, modelo, clave, json_mode=True):
         time.sleep(espera)
 
 
-def interpretar(texto, diff=None, exigir_comprobaciones=False,
-                rutas_comprobaciones=None):
-    """Valida esquema y, si se aporta diff, citas; devuelve resultado o None."""
+def validar(texto, diff=None, exigir_comprobaciones=False,
+            rutas_comprobaciones=None):
+    """Valida esquema y, si se aporta diff, citas.
+
+    Devuelve (resultado, None) o (None, motivo). El motivo nombra la regla
+    incumplida, nunca el contenido de la respuesta: puede citar el prompt.
+    """
     try:
         datos = json.loads(texto)
     except (TypeError, ValueError):
-        return None
+        return None, "json"
     if not isinstance(datos, dict) or not isinstance(datos.get("hallazgos"), list):
-        return None
+        return None, "esquema"
     if not isinstance(datos.get("resumen"), str) or not datos["resumen"].strip():
-        return None
+        return None, "esquema"
     comprobaciones = datos.get("comprobaciones")
     if comprobaciones is not None or exigir_comprobaciones:
         if not isinstance(comprobaciones, list) or not 1 <= len(comprobaciones) <= 6:
-            return None
+            return None, "comprobaciones"
         rutas = rutas_comprobaciones
         if rutas is None and diff is not None:
             rutas = indice_diff(diff)
@@ -289,11 +296,11 @@ def interpretar(texto, diff=None, exigir_comprobaciones=False,
             if not isinstance(c, dict) or any(
                     not isinstance(c.get(k), str) or not c[k].strip()
                     for k in ("archivo", "escenario", "conclusion", "estado")):
-                return None
+                return None, "comprobaciones"
             if c["estado"] not in ("revisado", "pendiente"):
-                return None
+                return None, "comprobaciones"
             if rutas is not None and c["archivo"] not in rutas:
-                return None
+                return None, "ruta"
     # No descartar filas invalidas: convertirlas en [] anunciaria un falso exito.
     campos = ("severidad", "archivo", "fragmento", "problema", "escenario", "arreglo")
     hallazgos = datos["hallazgos"]
@@ -301,14 +308,20 @@ def interpretar(texto, diff=None, exigir_comprobaciones=False,
     for h in hallazgos:
         if not isinstance(h, dict) or any(
                 not isinstance(h.get(c), str) or not h[c].strip() for c in campos):
-            return None
+            return None, "hallazgo"
         if h["severidad"] not in SEVERIDADES:
-            return None
+            return None, "hallazgo"
         if archivos is not None:
             lineas = archivos.get(h["archivo"], set())
             if not any(h["fragmento"] in (linea, linea[1:]) for linea in lineas):
-                return None
-    return datos["resumen"].strip(), hallazgos
+                return None, "cita"
+    return (datos["resumen"].strip(), hallazgos), None
+
+
+def interpretar(texto, diff=None, exigir_comprobaciones=False,
+                rutas_comprobaciones=None):
+    """Como validar(), pero solo el resultado: None si la respuesta no vale."""
+    return validar(texto, diff, exigir_comprobaciones, rutas_comprobaciones)[0]
 
 
 def _linea(valor, limite=500):
@@ -316,7 +329,7 @@ def _linea(valor, limite=500):
 
 
 def renderizar(resultado, modelo, diff_len, recortado, cabeza="", error=None,
-               comprobaciones=None, ejecucion_url="", intento=""):
+               comprobaciones=None, ejecucion_url="", intento="", motivo=None):
     partes = [MARCA, t('mensaje_02') % modelo]
     if cabeza:
         partes.append(t('mensaje_05') % cabeza)
@@ -329,6 +342,8 @@ def renderizar(resultado, modelo, diff_len, recortado, cabeza="", error=None,
         partes.append(t('mensaje_07') % error)
     elif resultado is None:
         partes.append(t('mensaje_08'))
+        if motivo:
+            partes.append(t('mensaje_26') % (INTENTOS_RESPUESTA, t('motivo_' + motivo)))
     else:
         resumen, hallazgos = resultado
         if resumen:
@@ -387,7 +402,7 @@ def main():
         pr = json.load(fh)["pull_request"]
     modelo = os.environ.get("MISTRAL_MODEL") or "mistral-large-latest"
     diff, recortado, resultado, error = "", False, None, None
-    comprobaciones = None
+    comprobaciones = motivo = None
     try:
         diff = mask_secrets(obtener_diff(pr["base"]["sha"], pr["head"]["sha"]))
         if not diff.strip():
@@ -395,12 +410,17 @@ def main():
         else:
             mensajes, recortado = construir_mensajes(pr.get("title"), pr.get("body"),
                 diff, leer_guia(), obtener_contexto(diff[:MAX_DIFF], pr["head"]["sha"]))
-            texto = llamar_mistral(mensajes, modelo, clave)
-            resultado = interpretar(texto, diff[:MAX_DIFF], exigir_comprobaciones=True,
-                rutas_comprobaciones=obtener_rutas_diff(
-                    pr["base"]["sha"], pr["head"]["sha"]))
-            if resultado is not None:
-                comprobaciones = json.loads(texto)["comprobaciones"]
+            rutas = obtener_rutas_diff(pr["base"]["sha"], pr["head"]["sha"])
+            for solicitud in range(1, INTENTOS_RESPUESTA + 1):
+                texto = llamar_mistral(mensajes, modelo, clave)
+                resultado, motivo = validar(texto, diff[:MAX_DIFF],
+                    exigir_comprobaciones=True, rutas_comprobaciones=rutas)
+                if resultado is not None:
+                    comprobaciones = json.loads(texto)["comprobaciones"]
+                    break
+                # Solo la regla incumplida: la respuesta puede citar el prompt.
+                print(t('mensaje_25') % (solicitud, INTENTOS_RESPUESTA,
+                                         t('motivo_' + motivo)))
     except urllib.error.HTTPError as fallo:
         error = t('mensaje_23') % fallo.code
     except (urllib.error.URLError, TimeoutError):
@@ -418,7 +438,7 @@ def main():
         servidor, repo, ejecucion, intento)) if ejecucion else ""
     cuerpo = renderizar(resultado, modelo, len(diff), recortado,
                         cabeza=pr["head"]["sha"], error=error,
-                        comprobaciones=comprobaciones,
+                        comprobaciones=comprobaciones, motivo=motivo,
                         ejecucion_url=ejecucion_url, intento=intento)
     escribir_resumen(cuerpo)
     print(cuerpo)
