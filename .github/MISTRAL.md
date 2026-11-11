@@ -27,6 +27,20 @@ resultado crea un comentario nuevo con SHA, modelo y enlace al intento de
 Actions. No sobrescribe los anteriores. Un push cancela la revisión anterior
 en curso; si se cancela antes de publicar, puede no quedar comentario.
 
+**Un informe válido por commit.** Si el PR ya tiene un informe válido de la
+misma base y la misma cabeza, editar el título, reabrirlo o marcarlo listo no
+repite la revisión ni consume la API: el resumen de Actions dice «no
+repetida». Antes, abrir un borrador y marcarlo listo dejaba dos informes
+distintos del mismo commit. «Re-run jobs» siempre revisa. Un informe inválido
+o un fallo de API no cuentan como revisión hecha. Solo se reconoce la marca al
+principio de un comentario de GitHub Actions, y si no se puede leer el
+historial se revisa igualmente.
+
+**Cómo se lee el informe.** Tras el resumen va la línea **Resultado**
+(hallazgos, comprobaciones pendientes y sin defecto aparente). Después los
+hallazgos, luego las comprobaciones **pendientes** —lo que el modelo no pudo
+decidir y conviene mirar a mano— y, plegadas, las que no encontraron defecto.
+
 El modelo debe dar escenarios, comprobaciones pendientes y citas del diff.
 Las citas se validan literalmente; las comprobaciones de rutas admiten
 renombrados, permisos y binarios sin hunks. Si la respuesta llega pero no
@@ -36,8 +50,15 @@ contenido de la respuesta. Dos respuestas inválidas o un fallo de API hacen
 fallar el check, pero no demuestran un defecto del código. El resumen de
 Actions se escribe antes de publicar para conservarlo si falla GitHub.
 
-Se envían hasta 150.000 caracteres de diff, 20.000 de guía y 10.000 por archivo
-de contexto Python, con 40.000 en conjunto. Los recortes se indican. Las
+Se envían hasta 150.000 caracteres de diff y 20.000 de guía. Como contexto van
+**las funciones completas de la versión nueva que contienen las líneas
+cambiadas**, de archivos Python y shell, con sus números de línea: hasta 10.000
+caracteres por archivo y 40.000 en conjunto, primero el código y después los
+tests, cortando por líneas enteras. Antes se enviaba el principio de cada
+archivo Python y nada de `recon.sh`. En shell las funciones se reconocen por
+líneas (`nombre() {` … `}` en la columna 0, anidadas incluidas), sin ejecutar
+nada; un cambio fuera de toda función, o dentro de una de más de 200 líneas
+como `main`, lleva una ventana de 15 líneas. Los recortes se indican. Las
 asignaciones reconocidas por el patrón de claves de `mask_secrets` de `recon.sh`
 se filtran antes de enviar y publicar; en CI se sustituye el valor completo por
 `***`. No es detección universal de secretos: credenciales sin una asignación
@@ -48,6 +69,11 @@ El token tiene `contents: read` y `pull-requests: write`. El código del PR no s
 ejecuta con la clave. El job de tests carece de esa clave. El revisor vive fuera
 de `plugin/` y no cambia lo que el producto instalado lee, escribe o envía.
 
+El prompt pide que cada comprobación intente romper el cambio con una entrada
+que los tests del diff no ejerciten, y que cada hallazgo sobreviva a un intento
+de refutación o pase a «pendiente». Que eso mejore el juicio del modelo **no
+está medido**.
+
 Los tests locales simulan la API y GitHub. Validan transporte, formato, citas,
-filtrado e historial; no la calidad del juicio de Mistral. Una cita válida no
+filtrado, contexto e historial; no la calidad del juicio de Mistral. Una cita válida no
 demuestra un defecto, y «sin hallazgos» no demuestra corrección.
