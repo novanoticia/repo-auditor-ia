@@ -117,7 +117,16 @@ class TestRangos(unittest.TestCase):
 
     def test_expresion_muy_profunda_no_agota_la_recursion(self):
         fuente = "def f():\n    return " + " + ".join("v%d" % i for i in range(3000)) + "\n"
-        self.assertEqual(rangos_py(fuente, {2}), [(1, 2, "f")])
+        # Python 3.12+ la analiza y el recorrido propio no recurre; en 3.11 el
+        # analizador la rechaza y se usan ventanas. En ningun caso se lanza.
+        self.assertIn(rangos_py(fuente, {2}), (None, [(1, 2, "f")]))
+        with mock.patch.object(mr.subprocess, "run", return_value=mock.Mock(
+                returncode=0, stdout=fuente.encode("utf-8"))), \
+                mock.patch.object(mr, "MAX_ARCHIVO", 100000), \
+                mock.patch.object(mr, "MAX_CONTEXTO", 100000):
+            contexto = mr.obtener_contexto(diff_de("p.py", 2, "x"), "abc123")
+        self.assertIn("def f():", contexto)
+        self.assertIn("v2999", contexto)
 
     def test_funcion_dentro_de_un_if_o_try_tambien_se_encuentra(self):
         fuente = "try:\n    import x\nexcept ImportError:\n    def x():\n        return 1\n"
