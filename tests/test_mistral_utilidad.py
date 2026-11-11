@@ -265,6 +265,27 @@ class TestShell(unittest.TestCase):
         self.assertNotIn("valor-privado", mensajes[1]["content"])
 
 
+class TestCitas(unittest.TestCase):
+    DIFF = ("diff --git a/a.py b/a.py\n--- a/a.py\n+++ b/a.py\n@@ -1,2 +1,2 @@\n"
+            " def f():\n-        return 0\n+        return x + 1\n")
+
+    def validar(self, fragmento):
+        hallazgo = dict(HALLAZGO, fragmento=fragmento)
+        return mr.validar(json.dumps({"resumen": "R", "hallazgos": [hallazgo]}), self.DIFF)[1]
+
+    def test_la_sangria_no_invalida_una_cita_literal(self):
+        for cita in ("return x + 1", "        return x + 1", "+        return x + 1",
+                     "+return x + 1", "  return x + 1  ", "-        return 0", "def f():"):
+            with self.subTest(cita=cita):
+                self.assertIsNone(self.validar(cita))
+
+    def test_el_texto_distinto_el_recorte_y_los_signos_sueltos_siguen_fuera(self):
+        for cita in ("return x+1", "return x", "return  x + 1", "return y + 1",
+                     "+", "}", "return x + 1\ndef f():"):
+            with self.subTest(cita=cita):
+                self.assertEqual(self.validar(cita), "cita")
+
+
 class TestInforme(unittest.TestCase):
     def test_lo_accionable_arriba_y_lo_revisado_plegado(self):
         md = mr.renderizar(("R", [HALLAZGO]), "m", 10, False, cabeza="c1", base="b1",

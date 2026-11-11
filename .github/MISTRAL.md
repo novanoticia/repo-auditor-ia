@@ -42,7 +42,10 @@ hallazgos, luego las comprobaciones **pendientes** —lo que el modelo no pudo
 decidir y conviene mirar a mano— y, plegadas, las que no encontraron defecto.
 
 El modelo debe dar escenarios, comprobaciones pendientes y citas del diff.
-Las citas se validan literalmente; las comprobaciones de rutas admiten
+Las citas se validan literalmente, salvo la sangría y los espacios de los
+extremos, que no cuentan (el modelo suele citar sin sangría, y exigirla
+invalidaba la revisión entera); el resto debe coincidir carácter a carácter y
+una cita sin letras ni números no vale. Las comprobaciones de rutas admiten
 renombrados, permisos y binarios sin hunks. Si la respuesta llega pero no
 valida, se pide una segunda vez; un fallo de API no se repite por esta vía. El
 registro de Actions y el comentario nombran la regla incumplida, nunca el
