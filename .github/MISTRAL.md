@@ -41,6 +41,19 @@ historial se revisa igualmente.
 hallazgos, luego las comprobaciones **pendientes** —lo que el modelo no pudo
 decidir y conviene mirar a mano— y, plegadas, las que no encontraron defecto.
 
+**Modelos que razonan.** `mistral-large-latest` pasó a razonar antes de
+responder: devuelve el contenido en bloques (`thinking` y `text`) y gastaba el
+margen de salida entero en razonar, de ahí los informes «no completada»
+(medido en `email-triage-plugin#202`: 31.129 caracteres de razonamiento y
+ninguno de respuesta con 8.000 tokens). El revisor lee solo los bloques `text`,
+envía `reasoning_effort: "low"` —si el modelo no admite el parámetro, lo retira
+y repite— y da un margen de 16.000 tokens. Si la API corta la respuesta, el
+informe añade su código de causa (`length`) y el registro de Actions dice el
+modelo servido y cuánto ocupó el razonamiento y cuánto la respuesta: solo
+recuentos, nada del contenido. Cada revisión consume así del orden de 10.000
+tokens de salida; para evitarlo, fija un modelo sin razonamiento en
+`MISTRAL_MODEL`. Que 16.000 basten para diffs mucho mayores **no está medido**.
+
 El modelo debe dar escenarios, comprobaciones pendientes y citas del diff.
 Las citas se validan literalmente, salvo la sangría y los espacios de los
 extremos, que no cuentan (el modelo suele citar sin sangría, y exigirla
