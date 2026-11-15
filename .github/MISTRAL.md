@@ -66,7 +66,12 @@ invalidando la respuesta. Se portó de email-triage-plugin (PR #210): allí GLM
 dos líneas y se perdía la revisión entera. El prompt sigue pidiendo una sola
 línea. Las comprobaciones de rutas admiten
 renombrados, permisos y binarios sin hunks. Si la respuesta llega pero no
-valida, se pide una segunda vez; un fallo de API no se repite por esta vía. El
+valida, se pide una segunda vez; un fallo de API no se repite por esta vía.
+Desde el 2026-11-15 una respuesta **cortada por `length`** también se pide
+otra vez, dentro del mismo tope de dos solicitudes: GLM 5.3 Flash escribió
+una vez 25.000 caracteres en una sola línea, casi la mitad espacios, hasta
+agotar el margen, y la misma revisión relanzada salió bien (PR #26). Los
+demás cortes (`model_length`, `error`) no se repiten. El
 registro de Actions y el comentario nombran la regla incumplida, nunca el
 contenido de la respuesta. Dos respuestas inválidas o un fallo de API hacen
 fallar el check, pero no demuestran un defecto del código. El resumen de
