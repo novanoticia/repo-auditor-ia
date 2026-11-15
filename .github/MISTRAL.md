@@ -58,7 +58,13 @@ El modelo debe dar escenarios, comprobaciones pendientes y citas del diff.
 Las citas se validan literalmente, salvo la sangría y los espacios de los
 extremos, que no cuentan (el modelo suele citar sin sangría, y exigirla
 invalidaba la revisión entera); el resto debe coincidir carácter a carácter y
-una cita sin letras ni números no vale. Las comprobaciones de rutas admiten
+una cita sin letras ni números no vale. Desde el 2026-11-15 una cita también
+puede ser **varias líneas seguidas de un mismo hunk**, cada una completa; las
+líneas en blanco no cuentan, y dos líneas reales pero separadas siguen
+invalidando la respuesta. Se portó de email-triage-plugin (PR #210): allí GLM
+5.3 Flash vio el defecto del caso de control de la evaluación, lo citó con sus
+dos líneas y se perdía la revisión entera. El prompt sigue pidiendo una sola
+línea. Las comprobaciones de rutas admiten
 renombrados, permisos y binarios sin hunks. Si la respuesta llega pero no
 valida, se pide una segunda vez; un fallo de API no se repite por esta vía. El
 registro de Actions y el comentario nombran la regla incumplida, nunca el
