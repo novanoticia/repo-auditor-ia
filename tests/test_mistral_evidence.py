@@ -110,6 +110,14 @@ class TestEvidenciaMistral(unittest.TestCase):
             "c.py": [["-a = 0", "+a = 1"], ["-b = 0", "+b = 1"]]})
         self.assertEqual(mr.bloques_diff(DIFF)["a.py"],
                          [[" contexto = True", "-resultado = 1", "+resultado = 2"]])
+        # Dos eliminaciones seguidas llevan el mismo numero de cabeza y no
+        # parten el hunk (hallazgo de Mistral en el PR #26, no se sostiene).
+        borrado = ("diff --git a/x.py b/x.py\n--- a/x.py\n+++ b/x.py\n"
+                   "@@ -1,3 +1 @@\n ctx = 0\n-foo = 1\n-bar = 2\n")
+        self.assertEqual(mr.bloques_diff(borrado),
+                         {"x.py": [[" ctx = 0", "-foo = 1", "-bar = 2"]]})
+        self.assertEqual(mr.validar(respuesta(archivo="x.py", fragmento="foo = 1\nbar = 2"),
+                                    borrado)[1], None)
 
     def test_cita_en_linea_recortada_no_se_acredita_como_linea_completa(self):
         diff = DIFF[:DIFF.index("+resultado = 2")] + '+resultado = "tex'
