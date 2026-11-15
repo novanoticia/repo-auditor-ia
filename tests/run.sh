@@ -173,9 +173,15 @@ check_not "pyproject only: pip-audit not invoked" 'ARGS:'
 
 echo "recon.sh — unreadable file"
 LOCKED="$WORK/locked"; mkdir -p "$LOCKED"; printf 'TODO x\n' > "$LOCKED/secret.txt"; chmod 000 "$LOCKED/secret.txt"
-run_recon "$LOCKED"
+# root (a CI container, a sandbox) still reads a mode-000 file, so grep never
+# errors and the check cannot be exercised there: skip it, visibly.
+if [ -r "$LOCKED/secret.txt" ]; then
+  echo "  skip grep error => STATUS: failed (file still readable: running as root?)"
+else
+  run_recon "$LOCKED"
+  check "grep error => STATUS: failed, not a clean result" 'STATUS: failed \(grep exit 2'
+fi
 chmod 644 "$LOCKED/secret.txt"
-check "grep error => STATUS: failed, not a clean result" 'STATUS: failed \(grep exit 2'
 
 echo "recon.sh — not a git repo"
 PLAIN="$WORK/plain"; mkdir -p "$PLAIN"; printf 'x\n' > "$PLAIN/a.txt"
