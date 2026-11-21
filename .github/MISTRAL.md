@@ -52,6 +52,30 @@ Los dos workflows están fijados en la misma versión del revisor: `@` de `uses:
 y `ref:` deben coincidir en ambos archivos. El dictamen es otra opinión
 automatizada; compruébalo antes de actuar.
 
+## Evaluación del revisor
+
+El workflow `Mistral Eval` (`.github/workflows/mistral-eval.yml`) mide si el
+revisor encuentra defectos reales de este repo. No se lanza solo: **Actions →
+Mistral Eval → Run workflow**. Cada ejecución hace una petición de pago por
+caso y repetición (del orden de medio céntimo cada una).
+
+Los casos están en `.github/eval/casos.json`:
+
+- `c1-grep-status-invertido`, **control**: `grep_status` con la guarda
+  invertida, un defecto evidente puesto a propósito y deshecho en el commit
+  siguiente. Un revisor que no lo vea no ve defectos evidentes.
+- `p33-openrouter-toma-mistral-model`: el hallazgo de Codex del #33, corregido
+  en `12d75b2`.
+- `p22-recon-manual-sin-camelcase`: el hallazgo de Codex del #22, corregido en
+  `22970f8`. La línea de `KEYVAL_REGEX` que hace falta para verlo entero no
+  está en el diff: es un caso difícil a propósito.
+
+Como este repo no tiene Python, cada caso lleva `archivos_objetivo`
+(disponible desde mistral-review v1.5). Los casos citan SHA de commits
+concretos: un PR que los cambie hay que fusionarlo con *merge commit*, nunca
+con *squash* ni *rebase*. Método y cómo leer el resultado:
+[evaluación](https://github.com/novanoticia/mistral-review/blob/main/docs/evaluacion.md).
+
 ## Límites
 
 El filtro de secretos no es detección universal: credenciales sin una
