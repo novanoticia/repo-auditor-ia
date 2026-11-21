@@ -230,21 +230,34 @@ password='${fixture_start}\' token='${fixture_end}' # TODO
 EOF_SHELL
 cat > "$BACKSLASH/config.py" <<EOF_PYTHON
 password = '${fixture_start}\' ${fixture_end}'; token = '${fixture_end}' # TODO
+password = '${fixture_start}\n${fixture_end}'; token = '${fixture_end}' # TODO
 EOF_PYTHON
 cat > "$BACKSLASH/unknown" <<EOF_UNKNOWN
 # TODO password: '${fixture_start}\' # token: '${fixture_end}'
 EOF_UNKNOWN
+cat > "$BACKSLASH/embedded.yml" <<EOF_EMBEDDED_YAML
+run: |
+  password = '${fixture_start}\'${fixture_end}' # TODO
+EOF_EMBEDDED_YAML
+cat > "$BACKSLASH/embedded.sh" <<EOF_EMBEDDED_SHELL
+python3 - <<'PYTHON'
+password = '${fixture_start}\'${fixture_end}' # TODO
+PYTHON
+EOF_EMBEDDED_SHELL
 cat > "$WORK/backslash.expected" <<'EOF_EXPECTED'
-./workflow.YAML:1:# TODO password: '***' # token: '***'
-./config.sh:1:password='***' token='***' # TODO
-./config.py:1:password = '***'; token = '***' # TODO
+./workflow.YAML:1:# TODO password: '***
+./config.sh:1:password='***
+./config.py:1:password = '***
+./config.py:2:password = '***'; token = '***' # TODO
 ./unknown:1:# TODO password: '***
+./embedded.yml:2:  password = '***
+./embedded.sh:2:password = '***
 EOF_EXPECTED
 run_recon "$BACKSLASH"
 for name in 'TODO/FIXME/HACK DENSITY' 'SECRET HEURISTICS'; do
-  if [ "$(section "$name" | grep -Fxc -f "$WORK/backslash.expected")" -eq 4 ]; then
-    ok "$name: single-quoted backslashes masked according to the source format"
-  else ko "$name: single-quoted backslashes masked according to the source format"; fi
+  if [ "$(section "$name" | grep -Fxc -f "$WORK/backslash.expected")" -eq 7 ]; then
+    ok "$name: ambiguous single-quoted backslashes mask the rest of the line"
+  else ko "$name: ambiguous single-quoted backslashes mask the rest of the line"; fi
 done
 check_not "no credential leaks after a single-quoted backslash" "$fixture_start|$fixture_end"
 
