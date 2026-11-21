@@ -220,6 +220,47 @@ check "workflow inheritance kept" 'secrets: inherit # workflow option$'
 check "unquoted Actions reference kept" 'password: \$\{\{ secrets\.EXAMPLE \}\}$'
 check "quoted Actions function and reference kept" 'password: "\$\{\{ format\(.*secrets\.EXAMPLE\) \}\}"$'
 
+echo "recon.sh — single-quoted backslashes"
+BACKSLASH="$WORK/backslash"; mkdir -p "$BACKSLASH"
+cat > "$BACKSLASH/workflow.YAML" <<EOF_YAML
+# TODO password: '${fixture_start}\' # token: '${fixture_end}'
+EOF_YAML
+cat > "$BACKSLASH/config.sh" <<EOF_SHELL
+password='${fixture_start}\' token='${fixture_end}' # TODO
+EOF_SHELL
+cat > "$BACKSLASH/config.py" <<EOF_PYTHON
+password = '${fixture_start}\' ${fixture_end}'; token = '${fixture_end}' # TODO
+password = '${fixture_start}\n${fixture_end}'; token = '${fixture_end}' # TODO
+EOF_PYTHON
+cat > "$BACKSLASH/unknown" <<EOF_UNKNOWN
+# TODO password: '${fixture_start}\' # token: '${fixture_end}'
+EOF_UNKNOWN
+cat > "$BACKSLASH/embedded.yml" <<EOF_EMBEDDED_YAML
+run: |
+  password = '${fixture_start}\'${fixture_end}' # TODO
+EOF_EMBEDDED_YAML
+cat > "$BACKSLASH/embedded.sh" <<EOF_EMBEDDED_SHELL
+python3 - <<'PYTHON'
+password = '${fixture_start}\'${fixture_end}' # TODO
+PYTHON
+EOF_EMBEDDED_SHELL
+cat > "$WORK/backslash.expected" <<'EOF_EXPECTED'
+./workflow.YAML:1:# TODO password: '***
+./config.sh:1:password='***
+./config.py:1:password = '***
+./config.py:2:password = '***'; token = '***' # TODO
+./unknown:1:# TODO password: '***
+./embedded.yml:2:  password = '***
+./embedded.sh:2:password = '***
+EOF_EXPECTED
+run_recon "$BACKSLASH"
+for name in 'TODO/FIXME/HACK DENSITY' 'SECRET HEURISTICS'; do
+  if [ "$(section "$name" | grep -Fxc -f "$WORK/backslash.expected")" -eq 7 ]; then
+    ok "$name: ambiguous single-quoted backslashes mask the rest of the line"
+  else ko "$name: ambiguous single-quoted backslashes mask the rest of the line"; fi
+done
+check_not "no credential leaks after a single-quoted backslash" "$fixture_start|$fixture_end"
+
 echo "recon.sh — Actions literals"
 ACTIONS="$WORK/actions"; mkdir -p "$ACTIONS"
 cat > "$ACTIONS/actions.yml" <<EOF_LITERALS

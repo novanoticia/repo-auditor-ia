@@ -107,11 +107,19 @@ mask_secrets() {
     action_string = single_quote "([^" single_quote "]|" single_quote single_quote ")*" single_quote
     expression = "^\\$\\{\\{([^" single_quote "}]|" action_string ")*\\}\\}"
   }
-  function closing_quote(value, quote,   i, c) {
+  function closing_quote(value, quote,   i, c, next_char) {
     for (i = 2; i <= length(value); i++) {
       c = substr(value, i, 1)
-      if (c == "\\" || (quote == single_quote && c == quote && substr(value, i + 1, 1) == quote)) i++
-      else if (c == quote) return i
+      next_char = substr(value, i + 1, 1)
+      if (c == "\\") {
+        # A backslash can be literal or escape a single quote. Files can
+        # embed other languages, so treat an ambiguous close as unterminated.
+        if (quote == single_quote && next_char == quote) return 0
+        i++
+      } else if (c == quote) {
+        if (quote != single_quote || next_char != quote) return i
+        i++
+      }
     }
     return 0
   }
