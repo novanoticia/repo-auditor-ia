@@ -92,19 +92,80 @@ grep_status() {
 }
 has_git() { git rev-parse HEAD >/dev/null 2>&1; }
 
-# mask_secrets — filter that keeps each key-anchored value's first 4 chars and
-# replaces the rest with *** (values of 8 chars or fewer are fully masked), so
-# the key name stays as evidence but the value never reaches the agent.
+# mask_secrets — fully mask quoted values. For unquoted tokens longer than
+# 8 characters, keep the first 4 as before. Keep Actions references and the
+# workflow inheritance directive while masking credential literals in expressions.
 # Case-insensitive via tolower(): sed's I flag is GNU-only.
 mask_secrets() {
-  awk '
-  BEGIN { key = "(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[a-z0-9_]*[\"'\'']?[[:space:]]*[:=][[:space:]]*[\"'\'']?" }
+  awk -v single_quote="'" '
+  BEGIN {
+    quotes = "[\"" single_quote "]"
+    key = "(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[a-z0-9_]*" quotes "?[[:space:]]*[:=][[:space:]]*"
+    inherit_key = "^secrets" quotes "?[[:space:]]*:"
+    # Actions uses single-quoted strings with doubled single quotes. The
+    # closing braces inside one of those strings do not end the expression.
+    action_string = single_quote "([^" single_quote "]|" single_quote single_quote ")*" single_quote
+    expression = "^\\$\\{\\{([^" single_quote "}]|" action_string ")*\\}\\}"
+  }
+  function closing_quote(value, quote,   i, c) {
+    for (i = 2; i <= length(value); i++) {
+      c = substr(value, i, 1)
+      if (c == "\\" || (quote == single_quote && c == quote && substr(value, i + 1, 1) == quote)) i++
+      else if (c == quote) return i
+    }
+    return 0
+  }
+  function mask_action_literals(value,   result, prefix, literal, lookup) {
+    while (match(value, action_string)) {
+      prefix = substr(value, 1, RSTART - 1)
+      literal = substr(value, RSTART, RLENGTH)
+      value = substr(value, RSTART + RLENGTH)
+      # A string can supply all or part of the sensitive value, including as a
+      # function argument. A context lookup name identifies a reference.
+      lookup = tolower(prefix) ~ /(^|[^a-z0-9_.])(env|secrets|vars)[[:space:]]*\[[[:space:]]*$/ &&
+        substr(literal, 2, length(literal) - 2) ~ /^[A-Za-z_][A-Za-z0-9_]*$/ &&
+        value ~ /^[[:space:]]*\]/
+      if (length(literal) > 2 && !lookup) {
+        literal = single_quote "***" single_quote
+      }
+      result = result prefix literal
+    }
+    return result value
+  }
   {
     rest = $0; out = ""
     while (match(tolower(rest), key)) {
+      inherit = tolower(substr(rest, RSTART, RLENGTH)) ~ inherit_key &&
+        (RSTART == 1 || substr(rest, RSTART - 1, 1) !~ /[[:alnum:]_.-]/)
       out = out substr(rest, 1, RSTART + RLENGTH - 1)
       rest = substr(rest, RSTART + RLENGTH)
-      if (match(rest, /^[^[:space:]"'\'',;}]+/)) {
+      quote = substr(rest, 1, 1)
+      if (quote == "\"" || quote == single_quote) {
+        end = closing_quote(rest, quote)
+        if (!end) {
+          out = out quote "***"
+          rest = ""
+          break
+        }
+        value = substr(rest, 2, end - 2)
+        # Decode doubled YAML quotes before inspecting an Actions expression.
+        if (quote == single_quote) gsub(single_quote single_quote, single_quote, value)
+        if (value ~ (expression "$")) {
+          value = mask_action_literals(value)
+          if (quote == single_quote) gsub(single_quote, single_quote single_quote, value)
+        } else if (value != "" && !(inherit && value == "inherit")) {
+          value = "***"
+        }
+        out = out quote value quote
+        rest = substr(rest, end + 1)
+      } else if (inherit && rest ~ /^inherit([[:space:]]+#|[[:space:]]*$)/) {
+        out = out "inherit"
+        rest = substr(rest, length("inherit") + 1)
+      } else if (match(rest, expression) && substr(rest, RLENGTH + 1) ~ /^([[:space:],;}]|$)/) {
+        action = substr(rest, 1, RLENGTH)
+        rest = substr(rest, RLENGTH + 1)
+        out = out mask_action_literals(action)
+      } else if (match(rest, "^[^[:space:]\"" single_quote ",;}]+")) {
         out = out (RLENGTH > 8 ? substr(rest, 1, 4) : "") "***"
         rest = substr(rest, RLENGTH + 1)
       }
