@@ -58,6 +58,31 @@ if [ -z "$unplanted" ]; then ok "every leak marker is planted in the trap repo"
 else ko "every leak marker is planted (missing:$unplanted)"; fi
 check "values masked (first 4 chars + ***)" '"Rk7q\*\*\*"'
 
+# A quoted value is masked up to its closing quote, not up to the first space,
+# comma, ; or } (before, `password="ab cd"` printed ` cd"`). Values are split
+# pieces (invariant 6); every piece after the first 4 chars must stay hidden.
+TRAP_OUT="$OUT"
+eval "$(sed -n '/^mask_secrets() {/,/^}/p' "$RECON")"
+Q1="Qx7v""Mn4Kd8Rt"; Q2="Zw3H""f6Ly"; Q3="Jb2"; Q4="Yt5"; Q5="Hk4P""q9Vm"; Q6="Xr2""Lb7"
+SQ="'"
+OUT="$(printf '%s\n' \
+  "password=\"$Q1 $Q2\"" \
+  "api_key=$SQ$Q3,$Q4$SQ" \
+  "\"token\": \"$Q1;$Q2}\", \"x\": 1" \
+  "secret=\"$Q5 $Q6" \
+  'token: ""' \
+  "token=$Q1" | mask_secrets)"
+check "quoted value with space: masked to closing quote" '^password="Qx7v\*\*\*"$'
+check "quoted short value with comma: fully masked"     "^api_key='\\*\\*\\*'\$"
+check "quoted value with ; and }: masked, rest kept"    '^"token": "Qx7v\*\*\*", "x": 1$'
+check "unclosed quote: masked to end of line"           '^secret="Hk4P\*\*\*$'
+check "empty quoted value: left as is"                  '^token: ""$'
+check "unquoted value: first 4 chars + ***"             '^token=Qx7v\*\*\*$'
+for m in Mn4Kd8Rt "$Q2" "$Q3" "$Q4" q9Vm "$Q6"; do
+  check_not "quoted value hides piece $m" "$m"
+done
+OUT="$TRAP_OUT"
+
 # G6 — planted values must look like real credentials of their kind, or the
 # auditor infers "synthetic fixture" from a uniform length and lowers severity.
 raw_len() { sed -nE "s/.*$1[\"']?[[:space:]]*[:=][[:space:]]*[\"']?([^\"'[:space:]]+).*/\\1/p" "$2" | head -1 | tr -d '\n' | wc -c | tr -d ' '; }

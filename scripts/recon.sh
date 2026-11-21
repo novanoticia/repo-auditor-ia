@@ -95,6 +95,9 @@ has_git() { git rev-parse HEAD >/dev/null 2>&1; }
 # mask_secrets — filter that keeps each key-anchored value's first 4 chars and
 # replaces the rest with *** (values of 8 chars or fewer are fully masked), so
 # the key name stays as evidence but the value never reaches the agent.
+# A value that opens with " or ' is masked up to the matching closing quote on
+# the line (to the end of the line if there is none), so a space, comma, ; or }
+# inside it cannot let the tail through; an empty "" stays as is.
 # Case-insensitive via tolower(): sed's I flag is GNU-only.
 mask_secrets() {
   awk '
@@ -104,7 +107,14 @@ mask_secrets() {
     while (match(tolower(rest), key)) {
       out = out substr(rest, 1, RSTART + RLENGTH - 1)
       rest = substr(rest, RSTART + RLENGTH)
-      if (match(rest, /^[^[:space:]"'\'',;}]+/)) {
+      # key ends in [:=] + optional quote, so a quote here opens the value
+      q = substr(out, length(out), 1)
+      if (q == "\"" || q == "'\''") {
+        n = index(rest, q) - 1
+        if (n < 0) n = length(rest)
+        if (n > 0) out = out (n > 8 ? substr(rest, 1, 4) : "") "***"
+        rest = substr(rest, n + 1)
+      } else if (match(rest, /^[^[:space:]"'\'',;}]+/)) {
         out = out (RLENGTH > 8 ? substr(rest, 1, 4) : "") "***"
         rest = substr(rest, RLENGTH + 1)
       }
