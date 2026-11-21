@@ -94,7 +94,7 @@ has_git() { git rev-parse HEAD >/dev/null 2>&1; }
 
 # mask_secrets — fully mask quoted values. For unquoted tokens longer than
 # 8 characters, keep the first 4 as before. Keep Actions references and the
-# workflow inheritance directive, which do not contain credential values.
+# workflow inheritance directive while masking credential literals in expressions.
 # Case-insensitive via tolower(): sed's I flag is GNU-only.
 mask_secrets() {
   awk -v single_quote="'" '
@@ -115,6 +115,23 @@ mask_secrets() {
     }
     return 0
   }
+  function mask_action_literals(value,   result, prefix, literal, lookup) {
+    while (match(value, action_string)) {
+      prefix = substr(value, 1, RSTART - 1)
+      literal = substr(value, RSTART, RLENGTH)
+      value = substr(value, RSTART + RLENGTH)
+      # A string can supply all or part of the sensitive value, including as a
+      # function argument. A context lookup name identifies a reference.
+      lookup = tolower(prefix) ~ /(^|[^a-z0-9_.])(env|secrets|vars)[[:space:]]*\[[[:space:]]*$/ &&
+        substr(literal, 2, length(literal) - 2) ~ /^[A-Za-z_][A-Za-z0-9_]*$/ &&
+        value ~ /^[[:space:]]*\]/
+      if (length(literal) > 2 && !lookup) {
+        literal = single_quote "***" single_quote
+      }
+      result = result prefix literal
+    }
+    return result value
+  }
   {
     rest = $0; out = ""
     while (match(tolower(rest), key)) {
@@ -131,15 +148,23 @@ mask_secrets() {
           break
         }
         value = substr(rest, 2, end - 2)
-        if (value != "" && value !~ (expression "$") && !(inherit && value == "inherit")) value = "***"
+        # Decode doubled YAML quotes before inspecting an Actions expression.
+        if (quote == single_quote) gsub(single_quote single_quote, single_quote, value)
+        if (value ~ (expression "$")) {
+          value = mask_action_literals(value)
+          if (quote == single_quote) gsub(single_quote, single_quote single_quote, value)
+        } else if (value != "" && !(inherit && value == "inherit")) {
+          value = "***"
+        }
         out = out quote value quote
         rest = substr(rest, end + 1)
       } else if (inherit && rest ~ /^inherit([[:space:]]+#|[[:space:]]*$)/) {
         out = out "inherit"
         rest = substr(rest, length("inherit") + 1)
       } else if (match(rest, expression) && substr(rest, RLENGTH + 1) ~ /^([[:space:],;}]|$)/) {
-        out = out substr(rest, 1, RLENGTH)
+        action = substr(rest, 1, RLENGTH)
         rest = substr(rest, RLENGTH + 1)
+        out = out mask_action_literals(action)
       } else if (match(rest, "^[^[:space:]\"" single_quote ",;}]+")) {
         out = out (RLENGTH > 8 ? substr(rest, 1, 4) : "") "***"
         rest = substr(rest, RLENGTH + 1)

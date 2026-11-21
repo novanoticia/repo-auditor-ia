@@ -218,7 +218,33 @@ check "unterminated quotes mask the rest of the line" 'quoted\.yml:4:.*password=
 check_not "neither part of a quoted secret leaks" "$fixture_start|$fixture_end"
 check "workflow inheritance kept" 'secrets: inherit # workflow option$'
 check "unquoted Actions reference kept" 'password: \$\{\{ secrets\.EXAMPLE \}\}$'
-check "quoted Actions expression kept in full" 'password: "\$\{\{ format\(.*secrets\.EXAMPLE\) \}\}"$'
+check "quoted Actions function and reference kept" 'password: "\$\{\{ format\(.*secrets\.EXAMPLE\) \}\}"$'
+
+echo "recon.sh — Actions literals"
+ACTIONS="$WORK/actions"; mkdir -p "$ACTIONS"
+cat > "$ACTIONS/actions.yml" <<EOF_LITERALS
+# TODO token: "\${{ secrets.EXAMPLE || 'Server=test;password=${fixture_start} ${fixture_end}' }}"
+# TODO token: \${{ secrets.EXAMPLE || 'Server=test;password=${fixture_start} ${fixture_end}' }}
+# TODO token: '\${{ secrets.EXAMPLE || ''Server=test;password=${fixture_start} ${fixture_end}'' }}'
+# TODO token: \${{ secrets.EXAMPLE || '${fixture_start} ${fixture_end}' }}
+# TODO token: \${{ format('{0} {1}', '${fixture_start}', '${fixture_end}') }}
+# TODO token: \${{ secrets['EXAMPLE'] }}
+EOF_LITERALS
+cat > "$WORK/actions.expected" <<'EOF_EXPECTED'
+./actions.yml:1:# TODO token: "${{ secrets.EXAMPLE || '***' }}"
+./actions.yml:2:# TODO token: ${{ secrets.EXAMPLE || '***' }}
+./actions.yml:3:# TODO token: '${{ secrets.EXAMPLE || ''***'' }}'
+EOF_EXPECTED
+run_recon "$ACTIONS"
+for name in 'TODO/FIXME/HACK DENSITY' 'SECRET HEURISTICS'; do
+  if [ "$(section "$name" | grep -Fxc -f "$WORK/actions.expected")" -eq 3 ]; then
+    ok "$name: Actions fallback credentials masked and references kept"
+  else ko "$name: Actions fallback credentials masked and references kept"; fi
+done
+check "bare fallback literal in sensitive field masked" 'actions\.yml:4:.*secrets\.EXAMPLE \|\| .\*\*\*. \}\}$'
+check "function arguments cannot expose literals in sensitive fields" 'actions\.yml:5:.*format\(.\*\*\*., .\*\*\*., .\*\*\*.\) \}\}$'
+check "indexed Actions secret reference kept" "actions\\.yml:6:.*secrets\\['EXAMPLE'\\] \\}\\}$"
+check_not "no part of an Actions fallback credential leaks" "$fixture_start|$fixture_end"
 
 echo "plugin/ — directory policy"
 # The plugin directory refuses scripts from non-Verified organizations: plugin/
