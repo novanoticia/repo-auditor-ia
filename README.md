@@ -65,10 +65,12 @@ Qué lee, qué escribe y qué sale de tu máquina:
 
 ## Revisión de pull requests
 
-La CI de este repositorio puede enviar a la API de Mistral el título, la
-descripción, las reglas del proyecto, el diff y contexto de código para analizar
-un PR. Es infraestructura del repositorio, fuera del plugin publicado: no cambia
-el reconocimiento ni los informes que genera la skill. El revisor solo comenta,
+La CI de este repositorio puede enviar a la API de Mistral el título, las
+reglas del proyecto, el diff y contexto de código para analizar un PR; la
+descripción del PR no se envía. Para contrastar los hallazgos que dejan otras
+IAs, envía también el texto de esos hallazgos. Es infraestructura del
+repositorio, fuera del plugin publicado: no cambia el reconocimiento ni los
+informes que genera la skill. El revisor solo comenta,
 sin aplicar parches; conserva un informe por ejecución. Configuración, filtrado
 de asignaciones sensibles y límites en [.github/MISTRAL.md](.github/MISTRAL.md).
 
