@@ -1,0 +1,53 @@
+[
+  {
+    "id": "c1-grep-status-invertido",
+    "tipo": "positivo",
+    "control": true,
+    "base": "0f2b7686721f4ccdbdc4870e3a0406b1bf62b9b9",
+    "cabeza": "175ba154814f7e1896e7e3b5ead953162755d1a8",
+    "arreglo": "7deb5de13021c3e60a7023d30dbc46586329cd9b",
+    "defecto": "Control sintético: `grep_status` en `scripts/recon.sh` compara con `-ge 1` en vez de `-le 1`; un grep con coincidencias (0) informa «failed» y uno con error (2) informa «ok». Se ve entero en el diff: un revisor que no lo señale no ve defectos evidentes.",
+    "evidencia_minima": [
+      {
+        "archivo": "scripts/recon.sh",
+        "desde": 90,
+        "hasta": 91
+      }
+    ]
+  },
+  {
+    "id": "p33-openrouter-toma-mistral-model",
+    "tipo": "positivo",
+    "base": "3d6c56b70d95977323a750a72291dd03b0434165",
+    "cabeza": "6cb372def4e00fba806edd7b497e3c6088ec097d",
+    "arreglo": "12d75b2e7f0c7c879e2e280cfb9d69aab5fc1332",
+    "defecto": "#33: con MISTRAL_PROVIDER=openrouter y sin OPENROUTER_MODEL, la expresión `... && vars.OPENROUTER_MODEL || vars.MISTRAL_MODEL` pasa MISTRAL_MODEL a OpenRouter en vez de dejar el modelo vacío y fallar con un mensaje claro, como promete el commit.",
+    "evidencia_minima": [
+      {
+        "archivo": ".github/workflows/mistral-review.yml",
+        "desde": 26,
+        "hasta": 26
+      }
+    ]
+  },
+  {
+    "id": "p22-recon-manual-sin-camelcase",
+    "tipo": "positivo",
+    "base": "72b5cace6b5df18666a7da990386a4213df5ce33",
+    "cabeza": "f4beb257307dfc2ed8ff9a8d8712b91805bb8e96",
+    "arreglo": "22970f851d748c0e21de3ec1772dbcb22dcf5dbc",
+    "defecto": "#22: la sección 10 de `manual-recon.md` busca nombres con `api_key`, `password`/`passwd`, `token`… escritos así, mientras `KEYVAL_REGEX` de `scripts/recon.sh` acepta `api[_-]?key` y `private[_-]?key` sin distinguir mayúsculas; el reconocimiento manual pierde candidatos como `apiKey`, `api-key` o `privateKey`.",
+    "evidencia_minima": [
+      {
+        "archivo": "plugin/skills/auditar-repo/references/manual-recon.md",
+        "desde": 57,
+        "hasta": 59
+      },
+      {
+        "archivo": "scripts/recon.sh",
+        "desde": 84,
+        "hasta": 84
+      }
+    ]
+  }
+]
