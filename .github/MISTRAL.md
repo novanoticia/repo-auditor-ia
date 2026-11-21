@@ -48,8 +48,9 @@ opcional `MISTRAL_REPLY_MODEL` elige otro modelo de Mistral solo para el
 contraste. Tampoco excluye ningún archivo. También se puede lanzar a mano: **Actions → Mistral Reply to
 AI Reviews → Run workflow**, con el número del PR y el id del comentario.
 
-Los dos workflows están fijados en la misma versión del revisor: `@` de `uses:`
-y `ref:` deben coincidir en ambos archivos. El dictamen es otra opinión
+Los tres workflows del revisor (`mistral-review.yml`, `mistral-reply.yml` y
+`mistral-eval.yml`) están fijados en la misma versión: `@` de `uses:` y `ref:`
+deben coincidir en los tres archivos. El dictamen es otra opinión
 automatizada; compruébalo antes de actuar.
 
 ## Evaluación del revisor
