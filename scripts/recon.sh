@@ -107,11 +107,29 @@ mask_secrets() {
     action_string = single_quote "([^" single_quote "]|" single_quote single_quote ")*" single_quote
     expression = "^\\$\\{\\{([^" single_quote "}]|" action_string ")*\\}\\}"
   }
-  function closing_quote(value, quote,   i, c) {
+  function single_quote_mode(line,   path) {
+    # Both callers feed grep -rni output (./file:line:text). A second apparent
+    # separator can come from a colon in the filename, so leave the mode open.
+    if (line !~ /^\.\// || !match(line, /:[0-9]+:/)) return "unknown"
+    if (substr(line, RSTART + RLENGTH - 1) ~ /:[0-9]+:/) return "unknown"
+    path = tolower(substr(line, 1, RSTART - 1))
+    if (path ~ /[.](ya?ml|sh|bash|dash|ash|ksh|zsh)$/ ||
+        path ~ /(^|\/)[.](bashrc|bash_profile|profile|zshrc|zprofile|zshenv|zlogin|zlogout)$/) return "literal"
+    if (path ~ /[.](py|pyw|[cm]?js|jsx|[cm]?ts|tsx|rb|php|pl|pm|fish)$/) return "escape"
+    return "unknown"
+  }
+  function closing_quote(value, quote, mode,   i, c, next_char) {
     for (i = 2; i <= length(value); i++) {
       c = substr(value, i, 1)
-      if (c == "\\" || (quote == single_quote && c == quote && substr(value, i + 1, 1) == quote)) i++
-      else if (c == quote) return i
+      next_char = substr(value, i + 1, 1)
+      if (c == "\\" && (quote != single_quote || mode != "literal")) {
+        # An ambiguous closing quote must not expose the rest of the line.
+        if (quote == single_quote && mode == "unknown" && next_char == quote) return 0
+        i++
+      } else if (c == quote) {
+        if (quote != single_quote || next_char != quote) return i
+        i++
+      }
     }
     return 0
   }
@@ -133,6 +151,7 @@ mask_secrets() {
     return result value
   }
   {
+    mode = single_quote_mode($0)
     rest = $0; out = ""
     while (match(tolower(rest), key)) {
       inherit = tolower(substr(rest, RSTART, RLENGTH)) ~ inherit_key &&
@@ -141,7 +160,7 @@ mask_secrets() {
       rest = substr(rest, RSTART + RLENGTH)
       quote = substr(rest, 1, 1)
       if (quote == "\"" || quote == single_quote) {
-        end = closing_quote(rest, quote)
+        end = closing_quote(rest, quote, mode)
         if (!end) {
           out = out quote "***"
           rest = ""
