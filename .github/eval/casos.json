@@ -13,6 +13,9 @@
         "desde": 90,
         "hasta": 91
       }
+    ],
+    "archivos_objetivo": [
+      "scripts/recon.sh"
     ]
   },
   {
@@ -28,6 +31,9 @@
         "desde": 26,
         "hasta": 26
       }
+    ],
+    "archivos_objetivo": [
+      ".github/workflows/mistral-review.yml"
     ]
   },
   {
@@ -48,6 +54,9 @@
         "desde": 84,
         "hasta": 84
       }
+    ],
+    "archivos_objetivo": [
+      "plugin/skills/auditar-repo/references/manual-recon.md"
     ]
   }
 ]
