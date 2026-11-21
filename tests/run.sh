@@ -56,7 +56,8 @@ if [ -z "$leaked" ]; then ok "no planted value leaks (secrets + TODO samples)"
 else ko "no planted value leaks (leaked:$leaked)"; fi
 if [ -z "$unplanted" ]; then ok "every leak marker is planted in the trap repo"
 else ko "every leak marker is planted (missing:$unplanted)"; fi
-check "values masked (first 4 chars + ***)" '"Rk7q\*\*\*"'
+check "quoted values fully masked" '"apiKey": "\*\*\*"'
+check "unquoted values keep their 4-character prefix" 'GITHUB_TOKEN=ghp_\*\*\*'
 
 # G6 — planted values must look like real credentials of their kind, or the
 # auditor infers "synthetic fixture" from a uniform length and lowers severity.
@@ -189,6 +190,35 @@ run_recon "$PLAIN"
 if [ "$RC" -eq 0 ]; then ok "exits 0 without git"; else ko "exits 0 without git (got $RC)"; fi
 check "commit section skipped without git" 'STATUS: skipped \(not a git repo'
 check "hotspots skipped without git"       'STATUS: skipped \(not a git repo\)$'
+
+echo "recon.sh — quoted assignments"
+QUOTED="$WORK/quoted"; mkdir -p "$QUOTED"
+fixture_start=fixtureStart
+fixture_end=fixtureEnd
+cat > "$QUOTED/quoted.yml" <<EOF_VALUES
+# TODO password="${fixture_start} ${fixture_end}"
+# TODO password="${fixture_start}\" ${fixture_end}" token=short
+# TODO password='${fixture_start}'' ${fixture_end}'
+# TODO password="${fixture_start} ${fixture_end}
+EOF_VALUES
+cat >> "$QUOTED/quoted.yml" <<'EOF_ACTIONS'
+# TODO    secrets: inherit # workflow option
+# TODO    password: ${{ secrets.EXAMPLE }}
+# TODO    password: "${{ format('x }} {0}', secrets.EXAMPLE) }}"
+EOF_ACTIONS
+run_recon "$QUOTED"
+for name in 'TODO/FIXME/HACK DENSITY' 'SECRET HEURISTICS'; do
+  if section "$name" | grep -qE 'quoted\.yml:1:# TODO password="\*\*\*"$'; then
+    ok "$name: quoted spaces fully masked"
+  else ko "$name: quoted spaces fully masked"; fi
+done
+check "escaped quotes masked and scanning resumes" 'quoted\.yml:2:.*password="\*\*\*" token=\*\*\*$'
+check "doubled single quotes masked" "quoted\.yml:3:.*password='\\*\\*\\*'$"
+check "unterminated quotes mask the rest of the line" 'quoted\.yml:4:.*password="\*\*\*$'
+check_not "neither part of a quoted secret leaks" "$fixture_start|$fixture_end"
+check "workflow inheritance kept" 'secrets: inherit # workflow option$'
+check "unquoted Actions reference kept" 'password: \$\{\{ secrets\.EXAMPLE \}\}$'
+check "quoted Actions expression kept in full" 'password: "\$\{\{ format\(.*secrets\.EXAMPLE\) \}\}"$'
 
 echo "plugin/ — directory policy"
 # The plugin directory refuses scripts from non-Verified organizations: plugin/
