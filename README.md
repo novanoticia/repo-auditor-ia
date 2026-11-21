@@ -95,6 +95,10 @@ Para ejecutar los tests: `bash tests/run.sh`.
 
 ## Historial
 
+**1.4.1** — `scripts/recon.sh` deja de filtrar el final de los secretos entre comillas:
+
+- Un valor que empieza por `"` o `'` se tacha entero hasta la comilla de cierre de la misma línea (hasta el final de la línea si no la hay). Antes el tachado se paraba en el primer espacio, coma, `;` o `}`, y el resto del valor llegaba al informe. Una cadena vacía (`""`) no se tacha. El plugin publicado no cambia: el reconocimiento manual ya no muestra valores.
+
 **1.4.0** — el plugin publicado deja de llevar código ejecutable:
 
 - `recon.sh` sale del plugin y pasa a `scripts/recon.sh`, en este repositorio. El directorio de Claude solo admite scripts de organizaciones verificadas.
