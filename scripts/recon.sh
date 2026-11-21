@@ -87,7 +87,7 @@ section() { printf '\n== %s ==\n' "$1"; }
 status()  { echo "STATUS: $*"; }
 # grep_status <rc> — grep exits 0 (match) / 1 (no match) / 2 (error).
 grep_status() {
-  if [ "$1" -ge 1 ]; then status "ok"
+  if [ "$1" -le 1 ]; then status "ok"
   else status "failed (grep exit $1 — results may be partial)"; fi
 }
 has_git() { git rev-parse HEAD >/dev/null 2>&1; }
