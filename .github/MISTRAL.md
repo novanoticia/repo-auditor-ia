@@ -71,6 +71,9 @@ Los casos están en `.github/eval/casos.json`:
 - `p22-recon-manual-sin-camelcase`: el hallazgo de Codex del #22, corregido en
   `22970f8`. La línea de `KEYVAL_REGEX` que hace falta para verlo entero no
   está en el diff: es un caso difícil a propósito.
+- `p22-recon-manual-sin-camelcase-con-contexto` evalúa los mismos commits y
+  añade la línea 84 de `scripts/recon.sh` mediante `fragmentos_contexto`,
+  disponible desde mistral-review v1.6.
 - `n37-asteriscos-escapados` es un caso **negativo** basado en el falso
   positivo de Mistral sobre los asteriscos de `tests/run.sh` en el #37.
   [Aviso original](https://github.com/novanoticia/repo-auditor-ia/pull/37#issuecomment-7062707554)
