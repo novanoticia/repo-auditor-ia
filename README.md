@@ -9,17 +9,27 @@ No se fía de lo que promete el README del proyecto auditado: juzga lo que el c�
 
 [Privacy / Privacidad](#datos-y-red): el plugin no tiene servidor propio ni recoge datos; qué lee, escribe y envía está detallado en «Datos y red».
 
-## Qué hace
+**En esta página:**
+[En 3 pasos](#en-3-pasos) ·
+[Instalación](#instalación) ·
+[Uso](#uso) ·
+[Qué hace](#qué-hace) ·
+[Requisitos y límites](#requisitos-y-límites) ·
+[Datos y red](#datos-y-red) ·
+[Estructura](#estructura) ·
+[Historial](#historial)
 
-- **Cuatro ejes, analizados por separado:** arquitectura, deuda técnica, fiabilidad y seguridad, y preparación para IA (si un agente podría entender y modificar el proyecto sin romperlo).
-- **Razonamiento estructurado:** descompone el análisis, contrasta hipótesis alternativas en los hallazgos ambiguos, calibra la confianza de cada hallazgo con un criterio bayesiano cualitativo y se autoverifica antes de escribir.
-- **Severidad y confianza por separado:** un hallazgo puede ser grave y, a la vez, de confianza baja, y el informe lo muestra así.
-- **Evidencia obligatoria:** un hallazgo sin `archivo:línea`, función o commit no entra en el informe.
-- **Informe reproducible:** secciones fijas, rúbricas de puntuación ancladas e IDs estables (F1, QW1, CM1…), de modo que dos auditorías del mismo commit se pueden comparar fila a fila.
-- **Reconocimiento con contrato de evidencias:** antes de opinar, el auditor recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (citados por ubicación, nunca por valor) y auditoría de dependencias cuando hay herramientas disponibles. Cada sección termina en `STATUS: ok | failed | skipped`: una sección vacía nunca se confunde con un resultado limpio. El plugin instalado lo hace a mano, siguiendo una lista fija, y esa evidencia admite confianza Media como máximo.
-- **Reconocimiento determinista (opcional, desde este repositorio):** el script de solo lectura `scripts/recon.sh` produce el mismo paquete de forma reproducible, y solo su evidencia `ok` admite confianza Alta. No viaja con el plugin, porque el directorio de Claude no admite código ejecutable de cuentas no verificadas: para usarlo, clona este repositorio e indica al auditor la ruta del script. Con `--json` emite lo mismo en JSON, para compararlo o procesarlo con otras herramientas.
-- **Informe en tres idiomas:** español (por defecto), inglés o francés. Las etiquetas XML, los IDs, los emojis de severidad y las puntuaciones son iguales en los tres, así que un informe en inglés se puede comparar fila a fila con uno en español.
-- **Modo implementación (opcional):** si lo pides, aplica los arreglos que elijas por ID, uno a uno, verificando cada uno y con un commit por arreglo. Nunca hace push ni abre PR sin un permiso aparte.
+## En 3 pasos
+
+1. **Instálalo** desde el directorio de Claude o, en Claude Code, con los dos comandos de
+   [Instalación](#instalación).
+2. **Pídele una auditoría**: «Audita este repo: https://github.com/usuario/proyecto». Te
+   preguntará la profundidad (triage rápido, estándar o profunda) y el idioma, y te pedirá
+   permiso antes de clonar nada.
+3. **Lee el informe**: veredicto, diagnóstico por ejes con puntuación sobre 10, hallazgos
+   priorizados (F1, F2…) con su `archivo:línea`, riesgos ocultos y recomendaciones
+   (⚡ arreglos rápidos QW1…, 🏗️ cambios de fondo CM1…). Si quieres, pídele después que
+   aplique alguno: «Ejecuta QW1».
 
 ## Instalación
 
@@ -44,6 +54,18 @@ Escribe `/repo-auditor-ia:auditar-repo` o pídelo con lenguaje natural:
 **Idioma del informe:** añade `--lang en` (inglés), `--lang fr` (francés) o `--lang es` al invocar, por ejemplo `/repo-auditor-ia:auditar-repo https://github.com/usuario/proyecto --lang en`, o pídelo en el mensaje («en inglés», «in English», «en français»). Si no lo indicas, el auditor te lo pregunta al empezar; sin respuesta posible, usa el español.
 
 Antes de empezar, el auditor te pregunta el nivel de profundidad (triage rápido, auditoría estándar o revisión profunda) y, si no lo has indicado, el idioma; y te pide confirmación antes de clonar nada.
+
+## Qué hace
+
+- **Cuatro ejes, analizados por separado:** arquitectura, deuda técnica, fiabilidad y seguridad, y preparación para IA (si un agente podría entender y modificar el proyecto sin romperlo).
+- **Razonamiento estructurado:** descompone el análisis, contrasta hipótesis alternativas en los hallazgos ambiguos, calibra la confianza de cada hallazgo con un criterio bayesiano cualitativo y se autoverifica antes de escribir.
+- **Severidad y confianza por separado:** un hallazgo puede ser grave y, a la vez, de confianza baja, y el informe lo muestra así.
+- **Evidencia obligatoria:** un hallazgo sin `archivo:línea`, función o commit no entra en el informe.
+- **Informe reproducible:** secciones fijas, rúbricas de puntuación ancladas e IDs estables (F1, QW1, CM1…), de modo que dos auditorías del mismo commit se pueden comparar fila a fila.
+- **Reconocimiento con contrato de evidencias:** antes de opinar, el auditor recoge commit, estructura, manifiestos, zonas calientes de git, densidad de TODO, posibles secretos (citados por ubicación, nunca por valor) y auditoría de dependencias cuando hay herramientas disponibles. Cada sección termina en `STATUS: ok | failed | skipped`: una sección vacía nunca se confunde con un resultado limpio. El plugin instalado lo hace a mano, siguiendo una lista fija, y esa evidencia admite confianza Media como máximo.
+- **Reconocimiento determinista (opcional, desde este repositorio):** el script de solo lectura `scripts/recon.sh` produce el mismo paquete de forma reproducible, y solo su evidencia `ok` admite confianza Alta. No viaja con el plugin, porque el directorio de Claude no admite código ejecutable de cuentas no verificadas: para usarlo, clona este repositorio e indica al auditor la ruta del script. Con `--json` emite lo mismo en JSON, para compararlo o procesarlo con otras herramientas.
+- **Informe en tres idiomas:** español (por defecto), inglés o francés. Las etiquetas XML, los IDs, los emojis de severidad y las puntuaciones son iguales en los tres, así que un informe en inglés se puede comparar fila a fila con uno en español.
+- **Modo implementación (opcional):** si lo pides, aplica los arreglos que elijas por ID, uno a uno, verificando cada uno y con un commit por arreglo. Nunca hace push ni abre PR sin un permiso aparte.
 
 ## Requisitos y límites
 
