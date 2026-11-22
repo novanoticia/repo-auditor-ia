@@ -58,5 +58,15 @@
     "archivos_objetivo": [
       "plugin/skills/auditar-repo/references/manual-recon.md"
     ]
+  },
+  {
+    "id": "n37-asteriscos-escapados",
+    "tipo": "negativo",
+    "base": "e87ab1ceb5fef7bbbc475911b84d553480bb53d6",
+    "cabeza": "778db28e94001d6a74f5519ddd08f3aba5f03432",
+    "defecto": "#37: mistral-review avisó de asteriscos sin escapar en los patrones de tests/run.sh. En el código estaban escapados. El filtro de tachado alteró los patrones antes de enviarlos al modelo. El P1 de Codex en scripts/recon.sh era un defecto distinto.",
+    "archivos": [
+      "tests/run.sh"
+    ]
   }
 ]
