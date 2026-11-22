@@ -56,8 +56,9 @@ automatizada; compruébalo antes de actuar.
 ## Evaluación del revisor
 
 El workflow `Mistral Eval` (`.github/workflows/mistral-eval.yml`) mide si el
-revisor encuentra defectos reales de este repo. No se lanza solo: **Actions →
-Mistral Eval → Run workflow**. Cada ejecución hace una petición de pago por
+revisor encuentra defectos reales y si vuelve a señalar falsos positivos
+documentados. Se inicia manualmente desde **Actions → Mistral Eval →
+Run workflow**. Cada ejecución hace una petición de pago por
 caso y repetición (del orden de medio céntimo cada una).
 
 Los casos están en `.github/eval/casos.json`:
@@ -70,9 +71,13 @@ Los casos están en `.github/eval/casos.json`:
 - `p22-recon-manual-sin-camelcase`: el hallazgo de Codex del #22, corregido en
   `22970f8`. La línea de `KEYVAL_REGEX` que hace falta para verlo entero no
   está en el diff: es un caso difícil a propósito.
+- `n37-asteriscos-escapados` es un caso **negativo** basado en el falso
+  positivo de Mistral sobre los asteriscos de `tests/run.sh` en el #37.
+  [Aviso original](https://github.com/novanoticia/repo-auditor-ia/pull/37#issuecomment-7062707554)
 
-Como este repo no tiene Python, cada caso lleva `archivos_objetivo`
-(disponible desde mistral-review v1.5). Los casos citan SHA de commits
+Como este repo no tiene Python, los casos positivos llevan `archivos_objetivo`
+(disponible desde mistral-review v1.5). En los negativos, `archivos` indica
+dónde se publicó el falso positivo. Los casos citan SHA de commits
 concretos: un PR que los cambie hay que fusionarlo con *merge commit*, nunca
 con *squash* ni *rebase*. Método y cómo leer el resultado:
 [evaluación](https://github.com/novanoticia/mistral-review/blob/main/docs/evaluacion.md).
