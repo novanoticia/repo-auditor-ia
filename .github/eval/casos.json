@@ -60,6 +60,36 @@
     ]
   },
   {
+    "id": "p22-recon-manual-sin-camelcase-con-contexto",
+    "tipo": "positivo",
+    "base": "72b5cace6b5df18666a7da990386a4213df5ce33",
+    "cabeza": "f4beb257307dfc2ed8ff9a8d8712b91805bb8e96",
+    "arreglo": "22970f851d748c0e21de3ec1772dbcb22dcf5dbc",
+    "defecto": "#22: la sección 10 de `manual-recon.md` busca nombres con `api_key`, `password`/`passwd`, `token`… escritos así, mientras `KEYVAL_REGEX` de `scripts/recon.sh` acepta `api[_-]?key` y `private[_-]?key` sin distinguir mayúsculas; el reconocimiento manual pierde candidatos como `apiKey`, `api-key` o `privateKey`.",
+    "evidencia_minima": [
+      {
+        "archivo": "plugin/skills/auditar-repo/references/manual-recon.md",
+        "desde": 57,
+        "hasta": 59
+      },
+      {
+        "archivo": "scripts/recon.sh",
+        "desde": 84,
+        "hasta": 84
+      }
+    ],
+    "archivos_objetivo": [
+      "plugin/skills/auditar-repo/references/manual-recon.md"
+    ],
+    "fragmentos_contexto": [
+      {
+        "archivo": "scripts/recon.sh",
+        "desde": 84,
+        "hasta": 84
+      }
+    ]
+  },
+  {
     "id": "n37-asteriscos-escapados",
     "tipo": "negativo",
     "base": "e87ab1ceb5fef7bbbc475911b84d553480bb53d6",
