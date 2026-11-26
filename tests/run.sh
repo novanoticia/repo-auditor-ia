@@ -20,13 +20,35 @@ check_not() { if has "$2"; then ko "$1"; else ok "$1"; fi; }    # pattern absent
 # section <name>: print one recon section of $OUT
 section() { printf '%s\n' "$OUT" | awk -v s="== $1" 'index($0, s) == 1 {on=1; next} /^== / {on=0} on'; }
 
-run_recon() { OUT="$(PATH="$STUBS:$PATH" bash "$RECON" "$1" 2>&1)"; RC=$?; }
+run_recon() { OUT="$(PATH="$STUBS:$PATH" bash "$RECON" "$@" 2>&1)"; RC=$?; }
 
 TRAP="$WORK/trap"
 bash "$ROOT/tests/make-trap-repo.sh" "$TRAP" || { echo "cannot build trap repo"; exit 1; }
 
+
+echo "recon.sh — Git metadata requires explicit trust"
+mkdir "$WORK/git-probe"
+cat > "$WORK/git-probe/git" <<'EOF_GIT'
+#!/bin/sh
+: > "$RECON_GIT_PROBE"
+exit 1
+EOF_GIT
+chmod +x "$WORK/git-probe/git"
+OUT="$(RECON_GIT_PROBE="$WORK/git-called" PATH="$WORK/git-probe:$STUBS:$PATH" bash "$RECON" "$TRAP" 2>&1)"
+# Each Git section must explicitly skip and the audited tree still gets scanned.
+for name in 'COMMIT / REF' 'GIT HOTSPOTS' 'RECENT COMMITS'; do
+  if section "$name" | grep -Fxq 'STATUS: skipped (Git metadata not trusted)'; then
+    ok "$name skips untrusted Git metadata"
+  else
+    ko "$name skips untrusted Git metadata"
+  fi
+done
+if [ -e "$WORK/git-called" ]; then ko "Git executable is not invoked by default"
+else ok "Git executable is not invoked by default"; fi
+check "file reconnaissance still runs" '^== STACK MANIFESTS'
+
 echo "recon.sh — trap repo"
-run_recon "$TRAP"
+run_recon --trusted-git-metadata "$TRAP"
 if [ "$RC" -eq 0 ]; then ok "exits 0"; else ko "exits 0 (got $RC)"; fi
 
 # QW3 / F2 — tree shows .github but not .git internals
@@ -92,7 +114,7 @@ if printf '%s\n' "$HOT" | grep -qE '^ *[0-9]+ helper\.py$'; then ko "old path no
 
 # --json — same evidence as the text pack, machine-readable, tri-state per section
 TEXT_SECTIONS="$(printf '%s\n' "$OUT" | sed -n 's/^== \(.*\) ==$/\1/p' | grep -v '^END OF PACK$')"
-JOUT="$(PATH="$STUBS:$PATH" bash "$RECON" --json "$TRAP" 2>&1)"
+JOUT="$(PATH="$STUBS:$PATH" bash "$RECON" --json --trusted-git-metadata "$TRAP" 2>&1)"
 # jcheck <desc> <python boolean expr over d (parsed JSON) and ts (text section names)>
 # On failure it shows why (validator error + start of the output), so a FAIL in CI
 # can be diagnosed from the log alone.
@@ -186,7 +208,7 @@ chmod 644 "$LOCKED/secret.txt"
 
 echo "recon.sh — not a git repo"
 PLAIN="$WORK/plain"; mkdir -p "$PLAIN"; printf 'x\n' > "$PLAIN/a.txt"
-run_recon "$PLAIN"
+run_recon --trusted-git-metadata "$PLAIN"
 if [ "$RC" -eq 0 ]; then ok "exits 0 without git"; else ko "exits 0 without git (got $RC)"; fi
 check "commit section skipped without git" 'STATUS: skipped \(not a git repo'
 check "hotspots skipped without git"       'STATUS: skipped \(not a git repo\)$'

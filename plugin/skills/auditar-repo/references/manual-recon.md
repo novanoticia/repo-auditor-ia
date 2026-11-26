@@ -9,6 +9,9 @@ collect the same evidence by hand, with your own tools, following this checklist
 - **Read-only.** Never install, build, or run anything from the audited repo (Rule 7).
   Use file listing, search and read tools, and read-only `git` commands. Nothing here
   writes inside the repo.
+- **Git metadata.** Use Git against the target only if it meets Step 3's trust
+  condition. Otherwise mark sections 1, 7 and 8 `STATUS: skipped (Git metadata not trusted)`
+  and continue with the file-based sections.
 - **Same contract, lower ceiling.** Close every section below with a status line, exactly
   as the script would: `STATUS: ok`, `STATUS: failed (<reason>)` or
   `STATUS: skipped (<reason>)`. A section you could not complete is `failed` or `skipped`,
@@ -43,11 +46,11 @@ collect the same evidence by hand, with your own tools, following this checklist
 5. **SIZE** — number of files.
 6. **LARGEST SOURCE FILES** — top 10 by size, lockfiles excluded.
 7. **GIT HOTSPOTS** — files most changed in the last 6 months, top 15, **following
-   renames**: `git log --since="6 months ago" -M --name-status --format=`, then count per
+   renames**: `git --no-pager log --no-show-signature --no-ext-diff --no-textconv --since="6 months ago" -M --name-status --format=`, then count per
    path, adding every change made under an old name (`R old new` lines) to the file's
    current name. A file moved once and edited once is one entry with 2, not two entries
    with 1. Close with `ok (renames followed)`. Not a git repo → `skipped`.
-8. **RECENT COMMITS** — `git log --oneline -15`. Not a git repo → `skipped`.
+8. **RECENT COMMITS** — `git --no-pager log --no-show-signature --oneline -15` (redact secret values before reporting). Not a git repo → `skipped`.
 9. **TODO/FIXME/HACK DENSITY** — total count of `TODO|FIXME|HACK|XXX`, collected as
    **file and line only** (a marker can sit on a line that also holds a credential, so
    never print the matching text in bulk). Then read up to 10 of those lines one by one,

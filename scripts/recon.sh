@@ -8,7 +8,8 @@
 # "ok" means the check really ran; only "ok" evidence may be cited with
 # confidence Alta. "failed"/"skipped" must be declared in <limites> — an empty
 # section is never a clean result.
-# Usage: bash scripts/recon.sh [--json] [repo-dir]   (default: current directory)
+# Usage: bash scripts/recon.sh [--json] [--trusted-git-metadata] [repo-dir]   (default: current directory)
+#   --trusted-git-metadata  enable history only for auditor-controlled Git metadata.
 #   --json  the same pack as JSON (schema repo-auditor-ia/recon@1): one object per
 #           section with its worst status (failed > skipped > ok), every STATUS line
 #           with its check name, and the content lines.
@@ -75,6 +76,11 @@ to_json() {
 # main — the recon pack itself. A function so that --json can call it directly
 # instead of re-running this file.
 main() {
+trusted_git_metadata=false
+if [ "${1:-}" = "--trusted-git-metadata" ]; then
+  trusted_git_metadata=true
+  shift
+fi
 REPO="${1:-.}"
 cd "$REPO" 2>/dev/null || { echo "ERROR: cannot cd to '$REPO'" >&2; exit 1; }
 
@@ -90,7 +96,11 @@ grep_status() {
   if [ "$1" -le 1 ]; then status "ok"
   else status "failed (grep exit $1 — results may be partial)"; fi
 }
-has_git() { git rev-parse HEAD >/dev/null 2>&1; }
+has_git() { "$trusted_git_metadata" && git rev-parse --verify HEAD >/dev/null 2>&1; }
+skip_git() {
+  if "$trusted_git_metadata"; then status "skipped (not a git repo$1)"
+  else status "skipped (Git metadata not trusted)"; fi
+}
 
 # mask_secrets — fully mask quoted values. For unquoted tokens longer than
 # 8 characters, keep the first 4 as before. Keep Actions references and the
@@ -211,7 +221,7 @@ if has_git; then
   git describe --tags --always 2>/dev/null || true
   status "ok"
 else
-  status "skipped (not a git repo — no history-based checks available)"
+  skip_git " — no history-based checks available"
 fi
 
 section "STACK MANIFESTS (depth <= 3)"
@@ -250,18 +260,27 @@ section "GIT HOTSPOTS (churn, last 6 months, top 15)"
 if has_git; then
   # Renames are followed: log is newest-first, so each "R old new" maps the old
   # path (and every older change to it) onto the file's current name.
-  git log --since="6 months ago" -M --name-status --format= 2>/dev/null | awk -F '\t' '
+  git --no-pager log --no-show-signature --no-ext-diff --no-textconv --since="6 months ago" -M --name-status --format= 2>/dev/null | awk -F '\t' '
     $1 ~ /^R/ { cur = ($3 in final) ? final[$3] : $3; final[$2] = cur; n[cur]++; next }
     NF >= 2   { cur = ($2 in final) ? final[$2] : $2; n[cur]++ }
     END       { for (f in n) printf "%4d %s\n", n[f], f }' \
     | sort -k1,1rn -k2,2 | head -15
   status "ok (renames followed)"
 else
-  status "skipped (not a git repo)"
+  skip_git ""
 fi
 
 section "RECENT COMMITS (15)"
-if has_git; then git log --oneline -15; status "ok"; else status "skipped (not a git repo)"; fi
+if has_git; then
+  if recent=$(git --no-pager log --no-show-signature --oneline -15); then
+    printf '%s\n' "$recent" | mask_secrets
+    status "ok"
+  else
+    status "failed (git log failed)"
+  fi
+else
+  skip_git ""
+fi
 
 section "TODO/FIXME/HACK DENSITY"
 todo=$(grep -rniE '\b(TODO|FIXME|HACK|XXX)\b' $EXCL . 2>/dev/null); rc=$?
