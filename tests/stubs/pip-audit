@@ -1,5 +1,10 @@
 #!/bin/sh
-# Stub for pip-audit: echoes its arguments so tests can check the audit target.
+# Validate the audit target without relying on raw output in the pack.
+if [ "$#" -ne 4 ] || [ "$1" != "-r" ] || [ "$2" != "requirements.txt" ] ||
+   [ "$3" != "--no-deps" ] || [ "$4" != "--disable-pip" ]; then
+  echo "unexpected audit arguments" >&2
+  exit 2
+fi
 echo "ARGS: $*"
 echo "No known vulnerabilities found"
 exit 0

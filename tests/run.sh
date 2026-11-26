@@ -56,11 +56,12 @@ TREE="$(section 'TREE')"
 if printf '%s\n' "$TREE" | grep -qx './.github'; then ok "tree lists .github"; else ko "tree lists .github"; fi
 if printf '%s\n' "$TREE" | grep -qE '^\./\.git(/|$)'; then ko "tree hides .git"; else ok "tree hides .git"; fi
 
-# QW4 / F4 — every planted secret format is detected (by its key)
-for key in '"apiKey"' 'GITHUB_TOKEN=' 'AWS_SECRET_ACCESS_KEY=' 'settings.py:1:token' 'src_token:'; do
-  check "secret detected: $key" "$key"
+# QW4 / F4 and F5 — report candidate locations without exposing any value.
+SECRETS="$(section 'SECRET HEURISTICS')"
+for location in './config.json:2' './.env:1' './.env:2' './settings.py:1' './deploy.yml:1' './notes.sh:1'; do
+  if printf '%s\n' "$SECRETS" | grep -Fxq -- "$location"; then ok "secret candidate: $location"
+  else ko "secret candidate: $location"; fi
 done
-# QW4 / F5 — no planted value ever leaks past its first 4 chars
 # Leak markers (one per planted value) must never appear; the list must match
 # what the generator actually planted, or this check would pass vacuously.
 MARKERS="$ROOT/tests/trap-markers.txt"
@@ -78,8 +79,6 @@ if [ -z "$leaked" ]; then ok "no planted value leaks (secrets + TODO samples)"
 else ko "no planted value leaks (leaked:$leaked)"; fi
 if [ -z "$unplanted" ]; then ok "every leak marker is planted in the trap repo"
 else ko "every leak marker is planted (missing:$unplanted)"; fi
-check "quoted values fully masked" '"apiKey": "\*\*\*"'
-check "unquoted values keep their 4-character prefix" 'GITHUB_TOKEN=ghp_\*\*\*'
 
 # G6 — planted values must look like real credentials of their kind, or the
 # auditor infers "synthetic fixture" from a uniform length and lowers severity.
@@ -95,7 +94,12 @@ if [ "$lens" -ge 3 ]; then ok "planted values vary in length ($lens distinct)"; 
 check "npm without lockfile: skipped"     'npm audit needs a lockfile'
 check "cargo without Cargo.lock: skipped" 'cargo audit needs a lockfile'
 # QW2 / F3 — pip-audit targets the repo's requirements, installs nothing
-check "pip-audit audits requirements.txt" 'ARGS: -r requirements.txt --no-deps --disable-pip'
+if section 'DEPENDENCY AUDIT' | grep -Fxq 'STATUS: ok (exit 0)'; then
+  ok "pip-audit audits requirements.txt"
+else
+  ko "pip-audit audits requirements.txt"
+fi
+check_not "auditor diagnostics stay out of the pack" 'ARGS:|No known vulnerabilities found'
 
 # Tri-state contract — every section ends with STATUS: ok|failed|skipped
 missing="$(printf '%s\n' "$OUT" | awk '
@@ -111,6 +115,14 @@ if section 'AI/AGENT' | grep -q 'pkg/\.mcp\.json'; then ok "nested .mcp.json lis
 HOT="$(section 'GIT HOTSPOTS')"
 if printf '%s\n' "$HOT" | grep -qE '^ *2 lib/helper\.py$'; then ok "renamed file keeps its history (2 lib/helper.py)"; else ko "renamed file keeps its history (2 lib/helper.py)"; fi
 if printf '%s\n' "$HOT" | grep -qE '^ *[0-9]+ helper\.py$'; then ko "old path not listed separately"; else ok "old path not listed separately"; fi
+
+RECENT="$(section 'RECENT COMMITS')"
+if [ "$(printf '%s\n' "$RECENT" | grep -cE '^[0-9a-f]{40}$')" -eq 2 ]; then
+  ok "recent commits keep both commit IDs"
+else
+  ko "recent commits keep both commit IDs"
+fi
+check_not "commit subjects stay out of the pack" 'Initial import|Move helper into lib/'
 
 # --json — same evidence as the text pack, machine-readable, tri-state per section
 TEXT_SECTIONS="$(printf '%s\n' "$OUT" | sed -n 's/^== \(.*\) ==$/\1/p' | grep -v '^END OF PACK$')"
@@ -133,6 +145,7 @@ jcheck "--json: same sections as the text pack"   '[s["name"] for s in d["sectio
 jcheck "--json: every section is ok|skipped|failed" 'all(s["status"] in ("ok", "skipped", "failed") for s in d["sections"])'
 jcheck "--json: section status = worst of its STATUS lines" 'all(s["status"] == max((x["status"] for x in s["statuses"]), key=["ok","skipped","failed"].index) for s in d["sections"])'
 jcheck "--json: npm skip keeps its check name"    'any(x["check"] == "npm audit" and x["status"] == "skipped" for s in d["sections"] for x in s["statuses"])'
+jcheck "--json: pip-audit keeps its check name"   'any(x["check"] == "pip-audit" and x["status"] == "ok" for s in d["sections"] for x in s["statuses"])'
 jcheck "--json: summary counts every section"     'sum(d["summary"].values()) == len(d["sections"])'
 if printf '%s\n' "$JOUT" | grep -qF -f "$MARKERS"; then ko "--json: no planted value leaks"; else ok "--json: no planted value leaks"; fi
 
@@ -178,10 +191,11 @@ if printf '%s\n' "$MAN" | grep -q 'node_modules'; then ko "vendored manifests ex
 check "nested manifest not audited => explicit skip" 'STATUS: skipped \(nested manifests not audited'
 
 echo "recon.sh --json — escaping"
-ESC="$WORK/esc"; mkdir -p "$ESC"
-printf '# TODO a\tb "q" \\ back\n' > "$ESC/x.sh"
+ESC="$WORK/"$'esc\t"q"'; mkdir -p "$ESC"
+printf '# TODO ordinary source line\n' > "$ESC/name:42.txt"
 JOUT="$(bash "$RECON" --json "$ESC" 2>&1)"
-jcheck "--json: tabs, quotes and backslashes survive escaping" 'any("a\tb \"q\" \\ back" in l for s in d["sections"] for l in s["lines"])'
+jcheck "--json: tabs and quotes survive escaping in the directory" 'd["dir"].endswith("/esc\t\"q\"")'
+jcheck "--json: filename with colon keeps its complete location" 'any("./name:42.txt:1" in s["lines"] for s in d["sections"])'
 MULTILINE_DIR="$WORK/"$'two\nlines'
 mkdir -p "$MULTILINE_DIR"
 JOUT="$(bash "$RECON" --json "$MULTILINE_DIR" 2>&1)"
@@ -250,17 +264,11 @@ cat >> "$QUOTED/quoted.yml" <<'EOF_ACTIONS'
 EOF_ACTIONS
 run_recon "$QUOTED"
 for name in 'TODO/FIXME/HACK DENSITY' 'SECRET HEURISTICS'; do
-  if section "$name" | grep -qE 'quoted\.yml:1:# TODO password="\*\*\*"$'; then
-    ok "$name: quoted spaces fully masked"
-  else ko "$name: quoted spaces fully masked"; fi
+  if section "$name" | grep -Fxq './quoted.yml:1'; then
+    ok "$name: quoted assignment location retained"
+  else ko "$name: quoted assignment location retained"; fi
 done
-check "escaped quotes masked and scanning resumes" 'quoted\.yml:2:.*password="\*\*\*" token=\*\*\*$'
-check "doubled single quotes masked" "quoted\.yml:3:.*password='\\*\\*\\*'$"
-check "unterminated quotes mask the rest of the line" 'quoted\.yml:4:.*password="\*\*\*$'
-check_not "neither part of a quoted secret leaks" "$fixture_start|$fixture_end"
-check "workflow inheritance kept" 'secrets: inherit # workflow option$'
-check "unquoted Actions reference kept" 'password: \$\{\{ secrets\.EXAMPLE \}\}$'
-check "quoted Actions function and reference kept" 'password: "\$\{\{ format\(.*secrets\.EXAMPLE\) \}\}"$'
+check_not "neither source lines nor quoted values leak" "(# TODO|$fixture_start|$fixture_end)"
 
 echo "recon.sh — single-quoted backslashes"
 BACKSLASH="$WORK/backslash"; mkdir -p "$BACKSLASH"
@@ -287,19 +295,19 @@ password = '${fixture_start}\'${fixture_end}' # TODO
 PYTHON
 EOF_EMBEDDED_SHELL
 cat > "$WORK/backslash.expected" <<'EOF_EXPECTED'
-./workflow.YAML:1:# TODO password: '***
-./config.sh:1:password='***
-./config.py:1:password = '***
-./config.py:2:password = '***'; token = '***' # TODO
-./unknown:1:# TODO password: '***
-./embedded.yml:2:  password = '***
-./embedded.sh:2:password = '***
+./workflow.YAML:1
+./config.sh:1
+./config.py:1
+./config.py:2
+./unknown:1
+./embedded.yml:2
+./embedded.sh:2
 EOF_EXPECTED
 run_recon "$BACKSLASH"
 for name in 'TODO/FIXME/HACK DENSITY' 'SECRET HEURISTICS'; do
   if [ "$(section "$name" | grep -Fxc -f "$WORK/backslash.expected")" -eq 7 ]; then
-    ok "$name: ambiguous single-quoted backslashes mask the rest of the line"
-  else ko "$name: ambiguous single-quoted backslashes mask the rest of the line"; fi
+    ok "$name: single-quoted assignments retain their locations"
+  else ko "$name: single-quoted assignments retain their locations"; fi
 done
 check_not "no credential leaks after a single-quoted backslash" "$fixture_start|$fixture_end"
 
@@ -314,20 +322,17 @@ cat > "$ACTIONS/actions.yml" <<EOF_LITERALS
 # TODO token: \${{ secrets['EXAMPLE'] }}
 EOF_LITERALS
 cat > "$WORK/actions.expected" <<'EOF_EXPECTED'
-./actions.yml:1:# TODO token: "${{ secrets.EXAMPLE || '***' }}"
-./actions.yml:2:# TODO token: ${{ secrets.EXAMPLE || '***' }}
-./actions.yml:3:# TODO token: '${{ secrets.EXAMPLE || ''***'' }}'
+./actions.yml:1
+./actions.yml:2
+./actions.yml:3
 EOF_EXPECTED
 run_recon "$ACTIONS"
 for name in 'TODO/FIXME/HACK DENSITY' 'SECRET HEURISTICS'; do
   if [ "$(section "$name" | grep -Fxc -f "$WORK/actions.expected")" -eq 3 ]; then
-    ok "$name: Actions fallback credentials masked and references kept"
-  else ko "$name: Actions fallback credentials masked and references kept"; fi
+    ok "$name: Actions fallbacks retain their locations"
+  else ko "$name: Actions fallbacks retain their locations"; fi
 done
-check "bare fallback literal in sensitive field masked" 'actions\.yml:4:.*secrets\.EXAMPLE \|\| .\*\*\*. \}\}$'
-check "function arguments cannot expose literals in sensitive fields" 'actions\.yml:5:.*format\(.\*\*\*., .\*\*\*., .\*\*\*.\) \}\}$'
-check "indexed Actions secret reference kept" "actions\\.yml:6:.*secrets\\['EXAMPLE'\\] \\}\\}$"
-check_not "no part of an Actions fallback credential leaks" "$fixture_start|$fixture_end"
+check_not "Actions expressions and values stay out of the pack" "(secrets\.EXAMPLE|$fixture_start|$fixture_end)"
 
 echo "plugin/ — directory policy"
 # The plugin directory refuses scripts from non-Verified organizations: plugin/

@@ -412,7 +412,7 @@ micro-optimization from genuine operational risk.
 Prefer real tooling over eyeballing. The reconnaissance (Step 3) already attempts dependency
 audits (`pip-audit` / `cargo audit`) and a secret-pattern sweep. Review npm manifests and lockfiles locally. Deepen with
 dedicated scanners (`gitleaks`, `trufflehog`) and an SBOM/dependency review for
-supply-chain risk when the effort level warrants it. Report tool output as evidence
+supply-chain risk when the effort level warrants it. Capture tool diagnostics locally and report only outcomes and safe identifiers as evidence
 (confidence **Alta**) **only when its recon line says `STATUS: ok` and the pack came from the
 script** (manual pack: **Media**); a `failed` or
 `skipped` tool is a coverage gap for `<limites>`, never an implicit "no vulnerabilities".

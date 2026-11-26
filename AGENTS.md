@@ -50,11 +50,12 @@ macOS**.
    script's sections. A new section needs a status line *and* a test. `--json` is derived from
    the text pack (`to_json`), so keep the `== NAME ==` / `-- check --` / `STATUS:` line
    formats; a section without `STATUS` comes out as `failed` in JSON.
-3. **Exit codes are not verdicts.** `npm audit`, `pip-audit` and `cargo audit` exit
-   non-zero when they *find* vulnerabilities. Route new auditors through `run_audit()`.
-4. **No secret value ever reaches the output.** Anything that prints lines from the
-   audited repo must go through `mask_secrets()`. The test `no planted value leaks`
-   guards this.
+3. **Exit codes are not verdicts.** `pip-audit` and `cargo audit` exit non-zero
+   when they *find* vulnerabilities. Route new auditors through `run_audit()`
+   and keep their raw diagnostics local.
+4. **No secret value ever reaches the output.** Report match locations, commit IDs
+   and audit outcomes. Keep source text, commit subjects and raw diagnostics
+   out of the pack. The test `no planted value leaks` guards this.
 5. **Portability: bash 3.2 and BSD userland** (stock macOS). No associative arrays, no
    `${var,,}`, no `grep -P`, no GNU-only `sed` flags (`I`, bare `-i`). Avoid multibyte
    characters inside `[...]` regex brackets; use `(a|b)`.
