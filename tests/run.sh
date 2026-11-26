@@ -144,19 +144,25 @@ if [ -z "$ERR" ]; then ok "recon writes nothing to stderr"; else ko "recon write
 # Read-only invariant — recon never modifies the audited repo
 if [ -z "$(git -C "$TRAP" status --porcelain)" ]; then ok "trap repo untouched"; else ko "trap repo untouched"; fi
 
-echo "recon.sh — npm audit status with a lockfile"
-printf '{}\n' > "$TRAP/package-lock.json"
-for mode in clean:'STATUS: ok \(exit 0\)' vulns:'STATUS: ok \(exit 1: vulnerabilities' error:'STATUS: failed'; do
-  OUT="$(STUB_NPM="${mode%%:*}" PATH="$STUBS:$PATH" bash "$RECON" "$TRAP" 2>&1)"
-  check "npm ${mode%%:*} => ${mode#*:}" "${mode#*:}"
+echo "recon.sh — npm audit is skipped even with a lockfile"
+mkdir -p "$WORK/npm-probe"
+cat > "$WORK/npm-probe/npm" <<'EOF_NPM'
+#!/bin/sh
+: > "$RECON_NPM_PROBE"
+exit 1
+EOF_NPM
+chmod +x "$WORK/npm-probe/npm"
+for lockfile in package-lock.json npm-shrinkwrap.json; do
+  printf '{}\n' > "$TRAP/$lockfile"
+  OUT="$(RECON_NPM_PROBE="$WORK/npm-called" PATH="$WORK/npm-probe:$STUBS:$PATH" bash "$RECON" "$TRAP" 2>&1)"
+  check "$lockfile: npm audit skipped" 'STATUS: skipped \(npm registry configuration is not isolated'
+  rm -f "$TRAP/$lockfile"
 done
-rm -f "$TRAP/package-lock.json"
+if [ -e "$WORK/npm-called" ]; then ko "npm is never invoked for the audited repository"
+else ok "npm is never invoked for the audited repository"; fi
 
 echo "recon.sh — manifest present, auditor not installed"
-# PATH with only the npm stub + system dirs: pip-audit and cargo-audit are
-# guaranteed absent, so their manifests must still yield an explicit skip (G1).
-NPM_ONLY="$WORK/npm-only"; mkdir -p "$NPM_ONLY"; cp "$STUBS/npm" "$NPM_ONLY/npm"
-OUT="$(PATH="$NPM_ONLY:/usr/bin:/bin" "$BASH" "$RECON" "$TRAP" 2>&1)"
+OUT="$(PATH="/usr/bin:/bin" "$BASH" "$RECON" "$TRAP" 2>&1)"
 check "pip-audit missing => skipped, not silent"   'STATUS: skipped \(pip-audit not installed'
 check "cargo-audit missing => skipped, not silent" 'STATUS: skipped \(cargo-audit not installed'
 

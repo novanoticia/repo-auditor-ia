@@ -410,7 +410,7 @@ micro-optimization from genuine operational risk.
 
 ### 4f. Security tooling (when available)
 Prefer real tooling over eyeballing. The reconnaissance (Step 3) already attempts dependency
-audits (`npm audit` / `pip-audit` / `cargo audit`) and a secret-pattern sweep; deepen with
+audits (`pip-audit` / `cargo audit`) and a secret-pattern sweep. Review npm manifests and lockfiles locally. Deepen with
 dedicated scanners (`gitleaks`, `trufflehog`) and an SBOM/dependency review for
 supply-chain risk when the effort level warrants it. Report tool output as evidence
 (confidence **Alta**) **only when its recon line says `STATUS: ok` and the pack came from the

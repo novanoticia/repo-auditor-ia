@@ -332,10 +332,8 @@ skip() { echo "-- $1 --"; status "skipped ($2)"; }
 manifests=0
 if [ -f package.json ]; then
   manifests=1
-  if ! command -v npm >/dev/null 2>&1; then
-    skip "npm audit" "npm not installed — review package.json manually"
-  elif [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
-    run_audit "npm audit" npm audit --omit=dev
+  if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+    skip "npm audit" "npm registry configuration is not isolated — review the lockfile manually"
   else
     skip "npm audit" "no package-lock.json/npm-shrinkwrap.json — npm audit needs a lockfile"
   fi

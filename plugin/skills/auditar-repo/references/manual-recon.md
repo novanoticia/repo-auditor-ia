@@ -68,7 +68,8 @@ collect the same evidence by hand, with your own tools, following this checklist
     if it is already installed and only in the forms below, which install and build
     nothing:
     - `package.json` **with** `package-lock.json` or `npm-shrinkwrap.json`:
-      `npm audit --omit=dev`. No lockfile → `skipped (npm audit needs a lockfile)`.
+      `skipped (npm registry configuration is not isolated)`. Review the lockfile locally.
+      No lockfile → `skipped (npm audit needs a lockfile)`.
     - `requirements.txt`: `pip-audit -r requirements.txt --no-deps --disable-pip`.
       `pyproject.toml` only → `skipped` (auditing it would build the project and run its
       code). Never run bare `pip-audit` or `pip-audit .`.
