@@ -246,6 +246,12 @@ If the clone fails (private repo, wrong URL), explain the problem and ask for he
 
 ## Step 3 — Reconnaissance & Ecosystem
 
+**Git metadata trust.** Treat an existing local checkout's Git metadata as untrusted.
+Use Git history or version comparisons only in a fresh checkout created by this audit
+from a remote HTTPS URL with auditor-controlled Git settings, or when the user explicitly
+confirms that the checkout's Git metadata is under their control. Otherwise skip Git
+checks (including commit/ref) and record the reduced coverage in `<limites>`.
+
 **Shell mode: build the evidence pack first** — commit, tree, manifests, AI/agent
 artifacts, git hotspots, largest files, TODO/FIXME density, secret heuristics, and
 dependency audits when tooling exists. The plugin ships no executable code, so there are
@@ -262,7 +268,8 @@ two ways to get it:
   bash "<path>/recon.sh" "<WORKDIR>/repo" | tee "<WORKDIR>/recon.txt"
   ```
 
-  Execute it; no need to read its source. `recon.sh --json <dir>` emits the same pack as
+  Pass `--trusted-git-metadata` before the directory only when the trust
+  condition above is met. Execute it; no need to read its source. `recon.sh --json <dir>` emits the same pack as
   JSON, handy for comparing two runs programmatically.
 
 *(Static mode: neither applies; collect the same items from what the user pastes.)*
@@ -288,8 +295,8 @@ Then build the mental map on top of the evidence pack (feeds R1 axes 1–2):
 - **Git history:** hot spots from the recon pack (files that change constantly or
   concentrate recent fixes = probable debt). *(n/a in static mode.)*
 
-**Version comparison.** When the user asks to contrast two versions (tags, branches, or
-commits), diff them (`git -C "<WORKDIR>/repo" diff <old-ref>..<new-ref> --stat`; the
+**Version comparison.** With trusted Git metadata, when the user asks to contrast two versions (tags, branches, or
+commits), diff them (`git -C "<WORKDIR>/repo" diff --no-ext-diff --no-textconv <old-ref>..<new-ref> --stat`; the
 partial clone from Step 2 already has every ref) and reason about *evolution*:
 what regressed, what hardened, which modules concentrate churn. Report deltas explicitly,
 not just the current snapshot. Treat the newer version as fresh evidence that updates the
@@ -403,9 +410,9 @@ micro-optimization from genuine operational risk.
 
 ### 4f. Security tooling (when available)
 Prefer real tooling over eyeballing. The reconnaissance (Step 3) already attempts dependency
-audits (`npm audit` / `pip-audit` / `cargo audit`) and a secret-pattern sweep; deepen with
+audits (`pip-audit` / `cargo audit`) and a secret-pattern sweep. Review npm manifests and lockfiles locally. Deepen with
 dedicated scanners (`gitleaks`, `trufflehog`) and an SBOM/dependency review for
-supply-chain risk when the effort level warrants it. Report tool output as evidence
+supply-chain risk when the effort level warrants it. Capture tool diagnostics locally and report only outcomes and safe identifiers as evidence
 (confidence **Alta**) **only when its recon line says `STATUS: ok` and the pack came from the
 script** (manual pack: **Media**); a `failed` or
 `skipped` tool is a coverage gap for `<limites>`, never an implicit "no vulnerabilities".

@@ -8,7 +8,8 @@
 # "ok" means the check really ran; only "ok" evidence may be cited with
 # confidence Alta. "failed"/"skipped" must be declared in <limites> — an empty
 # section is never a clean result.
-# Usage: bash scripts/recon.sh [--json] [repo-dir]   (default: current directory)
+# Usage: bash scripts/recon.sh [--json] [--trusted-git-metadata] [repo-dir]   (default: current directory)
+#   --trusted-git-metadata  enable history only for auditor-controlled Git metadata.
 #   --json  the same pack as JSON (schema repo-auditor-ia/recon@1): one object per
 #           section with its worst status (failed > skipped > ok), every STATUS line
 #           with its check name, and the content lines.
@@ -75,8 +76,14 @@ to_json() {
 # main — the recon pack itself. A function so that --json can call it directly
 # instead of re-running this file.
 main() {
+trusted_git_metadata=false
+if [ "${1:-}" = "--trusted-git-metadata" ]; then
+  trusted_git_metadata=true
+  shift
+fi
 REPO="${1:-.}"
-cd "$REPO" 2>/dev/null || { echo "ERROR: cannot cd to '$REPO'" >&2; exit 1; }
+# CDPATH can make cd print the resolved directory before the pack header.
+cd -- "$REPO" >/dev/null 2>&1 || { printf 'ERROR: cannot cd to %q\n' "$REPO" >&2; exit 1; }
 
 EXCL="--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=vendor --exclude-dir=dist --exclude-dir=build --exclude-dir=__pycache__ --exclude-dir=.venv"
 # Key may carry a suffix (AWS_SECRET_ACCESS_KEY, GITHUB_TOKEN), a closing quote
@@ -84,103 +91,33 @@ EXCL="--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=vendor --exclu
 KEYVAL_REGEX='(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[A-Za-z0-9_]*["'\'']?[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9/+_.-]{12,}'
 
 section() { printf '\n== %s ==\n' "$1"; }
-status()  { echo "STATUS: $*"; }
+status() { printf 'STATUS: %s\n' "$*"; }
+# Reserve record prefixes for the emitters above. Remove terminal control
+# bytes before classifying evidence lines, while preserving tabs and newlines.
+evidence_lines() {
+  LC_ALL=C tr -d '\000-\010\013-\037\177' |
+    LC_ALL=C sed -E 's/^[[:blank:]]*(RECON EVIDENCE PACK|dir: |contract: |== |-- |STATUS: )/| &/'
+}
 # grep_status <rc> — grep exits 0 (match) / 1 (no match) / 2 (error).
 grep_status() {
   if [ "$1" -le 1 ]; then status "ok"
   else status "failed (grep exit $1 — results may be partial)"; fi
 }
-has_git() { git rev-parse HEAD >/dev/null 2>&1; }
-
-# mask_secrets — fully mask quoted values. For unquoted tokens longer than
-# 8 characters, keep the first 4 as before. Keep Actions references and the
-# workflow inheritance directive while masking credential literals in expressions.
-# Case-insensitive via tolower(): sed's I flag is GNU-only.
-mask_secrets() {
-  awk -v single_quote="'" '
-  BEGIN {
-    quotes = "[\"" single_quote "]"
-    key = "(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[a-z0-9_]*" quotes "?[[:space:]]*[:=][[:space:]]*"
-    inherit_key = "^secrets" quotes "?[[:space:]]*:"
-    # Actions uses single-quoted strings with doubled single quotes. The
-    # closing braces inside one of those strings do not end the expression.
-    action_string = single_quote "([^" single_quote "]|" single_quote single_quote ")*" single_quote
-    expression = "^\\$\\{\\{([^" single_quote "}]|" action_string ")*\\}\\}"
-  }
-  function closing_quote(value, quote,   i, c, next_char) {
-    for (i = 2; i <= length(value); i++) {
-      c = substr(value, i, 1)
-      next_char = substr(value, i + 1, 1)
-      if (c == "\\") {
-        # A backslash can be literal or escape a single quote. Files can
-        # embed other languages, so treat an ambiguous close as unterminated.
-        if (quote == single_quote && next_char == quote) return 0
-        i++
-      } else if (c == quote) {
-        if (quote != single_quote || next_char != quote) return i
-        i++
-      }
-    }
-    return 0
-  }
-  function mask_action_literals(value,   result, prefix, literal, lookup) {
-    while (match(value, action_string)) {
-      prefix = substr(value, 1, RSTART - 1)
-      literal = substr(value, RSTART, RLENGTH)
-      value = substr(value, RSTART + RLENGTH)
-      # A string can supply all or part of the sensitive value, including as a
-      # function argument. A context lookup name identifies a reference.
-      lookup = tolower(prefix) ~ /(^|[^a-z0-9_.])(env|secrets|vars)[[:space:]]*\[[[:space:]]*$/ &&
-        substr(literal, 2, length(literal) - 2) ~ /^[A-Za-z_][A-Za-z0-9_]*$/ &&
-        value ~ /^[[:space:]]*\]/
-      if (length(literal) > 2 && !lookup) {
-        literal = single_quote "***" single_quote
-      }
-      result = result prefix literal
-    }
-    return result value
-  }
-  {
-    rest = $0; out = ""
-    while (match(tolower(rest), key)) {
-      inherit = tolower(substr(rest, RSTART, RLENGTH)) ~ inherit_key &&
-        (RSTART == 1 || substr(rest, RSTART - 1, 1) !~ /[[:alnum:]_.-]/)
-      out = out substr(rest, 1, RSTART + RLENGTH - 1)
-      rest = substr(rest, RSTART + RLENGTH)
-      quote = substr(rest, 1, 1)
-      if (quote == "\"" || quote == single_quote) {
-        end = closing_quote(rest, quote)
-        if (!end) {
-          out = out quote "***"
-          rest = ""
-          break
-        }
-        value = substr(rest, 2, end - 2)
-        # Decode doubled YAML quotes before inspecting an Actions expression.
-        if (quote == single_quote) gsub(single_quote single_quote, single_quote, value)
-        if (value ~ (expression "$")) {
-          value = mask_action_literals(value)
-          if (quote == single_quote) gsub(single_quote, single_quote single_quote, value)
-        } else if (value != "" && !(inherit && value == "inherit")) {
-          value = "***"
-        }
-        out = out quote value quote
-        rest = substr(rest, end + 1)
-      } else if (inherit && rest ~ /^inherit([[:space:]]+#|[[:space:]]*$)/) {
-        out = out "inherit"
-        rest = substr(rest, length("inherit") + 1)
-      } else if (match(rest, expression) && substr(rest, RLENGTH + 1) ~ /^([[:space:],;}]|$)/) {
-        action = substr(rest, 1, RLENGTH)
-        rest = substr(rest, RLENGTH + 1)
-        out = out mask_action_literals(action)
-      } else if (match(rest, "^[^[:space:]\"" single_quote ",;}]+")) {
-        out = out (RLENGTH > 8 ? substr(rest, 1, 4) : "") "***"
-        rest = substr(rest, RLENGTH + 1)
-      }
-    }
-    print out rest
-  }'
+has_git() { "$trusted_git_metadata" && git rev-parse --verify HEAD >/dev/null 2>&1; }
+skip_git() {
+  if "$trusted_git_metadata"; then status "skipped (not a git repo$1)"
+  else status "skipped (Git metadata not trusted)"; fi
 }
+
+# Match locally and emit only file and line. NUL separates each filename
+# from the grep record, including when the filename has colons or newlines.
+scan_locations() (
+  set -o pipefail
+  LC_ALL=C grep -rniEIH --null --color=never $EXCL -- "$1" . 2>/dev/null |
+    while IFS= read -r -d '' file && IFS=: read -r line _; do
+      printf '%q:%s\n' "$file" "$line"
+    done
+)
 
 # find_named <maxdepth> <pattern...> — paths (./a/b) whose name matches a pattern
 # (a pattern containing "/" is matched against the path suffix instead), pruning
@@ -202,28 +139,32 @@ find_named() {
 }
 
 echo "RECON EVIDENCE PACK — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-echo "dir: $(pwd)"
+# Keep path metadata on one line, including paths that contain line breaks.
+display_dir=$PWD
+display_dir=${display_dir//\\/\\\\}
+display_dir=${display_dir//$'\n'/\\n}
+printf 'dir: %s\n' "$(printf '%s' "$display_dir" | evidence_lines)"
 echo "contract: every section ends with STATUS: ok | failed | skipped — only 'ok' evidence may be cited with confidence Alta"
 
 section "COMMIT / REF"
 if has_git; then
-  git rev-parse HEAD
-  git describe --tags --always 2>/dev/null || true
+  git rev-parse HEAD 2>/dev/null | evidence_lines
+  git describe --tags --always 2>/dev/null | evidence_lines
   status "ok"
 else
-  status "skipped (not a git repo — no history-based checks available)"
+  skip_git " — no history-based checks available"
 fi
 
 section "STACK MANIFESTS (depth <= 3)"
 manifest_list=$(find_named 3 package.json pyproject.toml setup.py requirements.txt go.mod \
   Cargo.toml composer.json Gemfile pom.xml build.gradle Makefile Dockerfile docker-compose.yml)
-if [ -n "$manifest_list" ]; then printf '%s\n' "$manifest_list"; else echo "none detected"; fi
+if [ -n "$manifest_list" ]; then printf '%s\n' "$manifest_list" | evidence_lines; else echo "none detected"; fi
 status "ok (depth <= 3; vendored/build dirs excluded)"
 
 section "AI/AGENT & PLUGIN ARTIFACTS (depth <= 4)"
 artifacts=$(find_named 4 SKILL.md AGENTS.md CLAUDE.md GEMINI.md .cursorrules .cursor/rules \
   mcp.json .mcp.json manifest.json plugin.json .claude-plugin .github/copilot-instructions.md)
-if [ -n "$artifacts" ]; then printf '%s\n' "$artifacts"; else echo "none detected"; fi
+if [ -n "$artifacts" ]; then printf '%s\n' "$artifacts" | evidence_lines; else echo "none detected"; fi
 status "ok (depth <= 4; vendored/build dirs excluded)"
 
 section "TREE (2 levels, capped at 80 entries)"
@@ -232,7 +173,7 @@ find . -maxdepth 2 \
   -not -path './.git' -not -path './.git/*' \
   -not -path './node_modules' -not -path './node_modules/*' \
   -not -path './.venv' -not -path './.venv/*' \
-  | sort | head -80
+  | sort | head -80 | evidence_lines
 status "ok"
 
 section "SIZE"
@@ -243,57 +184,61 @@ status "ok"
 section "LARGEST SOURCE FILES (KB, top 10, lockfiles excluded)"
 find . -type f -not -path './.git/*' -not -path './node_modules/*' \
      -not -name '*.lock' -not -name 'package-lock.json' -not -name 'yarn.lock' \
-     -exec du -k {} + 2>/dev/null | sort -rn | head -10
+     -exec du -k {} + 2>/dev/null | sort -rn | head -10 | evidence_lines
 status "ok"
 
 section "GIT HOTSPOTS (churn, last 6 months, top 15)"
 if has_git; then
   # Renames are followed: log is newest-first, so each "R old new" maps the old
   # path (and every older change to it) onto the file's current name.
-  git log --since="6 months ago" -M --name-status --format= 2>/dev/null | awk -F '\t' '
+  git --no-pager log --no-show-signature --no-ext-diff --no-textconv --since="6 months ago" -M --name-status --format= 2>/dev/null | awk -F '\t' '
     $1 ~ /^R/ { cur = ($3 in final) ? final[$3] : $3; final[$2] = cur; n[cur]++; next }
     NF >= 2   { cur = ($2 in final) ? final[$2] : $2; n[cur]++ }
     END       { for (f in n) printf "%4d %s\n", n[f], f }' \
-    | sort -k1,1rn -k2,2 | head -15
+    | sort -k1,1rn -k2,2 | head -15 | evidence_lines
   status "ok (renames followed)"
 else
-  status "skipped (not a git repo)"
+  skip_git ""
 fi
 
 section "RECENT COMMITS (15)"
-if has_git; then git log --oneline -15; status "ok"; else status "skipped (not a git repo)"; fi
+if has_git; then
+  if recent=$(git --no-pager log --no-show-signature --no-notes --no-decorate --format=%H -15 2>/dev/null); then
+    printf '%s\n' "$recent" | evidence_lines
+    status "ok"
+  else
+    status "failed (git log failed)"
+  fi
+else
+  skip_git ""
+fi
 
 section "TODO/FIXME/HACK DENSITY"
-todo=$(grep -rniE '\b(TODO|FIXME|HACK|XXX)\b' $EXCL . 2>/dev/null); rc=$?
+todo=$(scan_locations '\b(TODO|FIXME|HACK|XXX)\b'); rc=$?
 echo "total occurrences: $(printf '%s' "$todo" | grep -c .)"
-echo "sample lines (top 10 — discard self-referential/doc mentions before counting as debt):"
-[ -n "$todo" ] && printf '%s\n' "$todo" | head -10 | mask_secrets
+echo "sample locations (top 10):"
+[ -n "$todo" ] && printf '%s\n' "$todo" | head -10 | evidence_lines
 grep_status "$rc"
 
 section "SECRET HEURISTICS (candidates only — verify manually, Rule 6)"
-# Values are masked (see mask_secrets) so secrets never land in the agent's context.
-raw=$(grep -rniE "$KEYVAL_REGEX" $EXCL . 2>/dev/null); rc=$?
-hits=$(printf '%s\n' "$raw" | head -10 | mask_secrets); unset raw
-if [ -n "$hits" ]; then echo "$hits"; else echo "no obvious hits (heuristic, not proof of absence)"; fi
+hits=$(scan_locations "$KEYVAL_REGEX"); rc=$?
+if [ -n "$hits" ]; then printf '%s\n' "$hits" | head -10 | evidence_lines; else echo "no obvious hits (heuristic, not proof of absence)"; fi
 grep_status "$rc"
 
 section "DEPENDENCY AUDIT (one STATUS per detected manifest)"
-# run_audit <label> <cmd...> — runs one auditor and ALWAYS prints a STATUS line,
-# so an empty section can never be mistaken for a clean result. A non-zero exit
-# is not a failure by itself: npm, pip-audit and cargo-audit all exit non-zero
-# when they *find* vulnerabilities.
+# Keep auditor output local. Publish only the check name and its outcome.
+# A nonzero exit can mean that the auditor found vulnerabilities.
 run_audit() {
-  label=$1; shift
-  echo "-- $label (tail 15) --"
+  local label=$1 out rc
+  shift
+  printf -- '-- %s --\n' "$label"
   out=$("$@" 2>&1); rc=$?
-  printf '%s\n' "$out" | tail -15
   if [ "$rc" -eq 0 ]; then
-    echo "STATUS: ok (exit 0)"
-  elif printf '%s\n' "$out" | grep -qiE 'vulnerabilit' \
-       && ! printf '%s\n' "$out" | grep -qE '^npm (error|ERR!)'; then
-    echo "STATUS: ok (exit $rc: vulnerabilities reported)"
+    status "ok (exit 0)"
+  elif printf '%s\n' "$out" | grep -qi 'vulnerabilit'; then
+    status "ok (exit $rc: vulnerabilities reported)"
   else
-    echo "STATUS: failed (exit $rc) — output above is NOT a clean result; declare it in <limites>"
+    status "failed (exit $rc) — declare the coverage gap in <limites>"
   fi
 }
 # One block per detected manifest: each ALWAYS ends in a STATUS line, including
@@ -302,10 +247,8 @@ skip() { echo "-- $1 --"; status "skipped ($2)"; }
 manifests=0
 if [ -f package.json ]; then
   manifests=1
-  if ! command -v npm >/dev/null 2>&1; then
-    skip "npm audit" "npm not installed — review package.json manually"
-  elif [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
-    run_audit "npm audit" npm audit --omit=dev
+  if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+    skip "npm audit" "npm registry configuration is not isolated — review the lockfile manually"
   else
     skip "npm audit" "no package-lock.json/npm-shrinkwrap.json — npm audit needs a lockfile"
   fi
