@@ -176,6 +176,20 @@ ESC="$WORK/esc"; mkdir -p "$ESC"
 printf '# TODO a\tb "q" \\ back\n' > "$ESC/x.sh"
 JOUT="$(bash "$RECON" --json "$ESC" 2>&1)"
 jcheck "--json: tabs, quotes and backslashes survive escaping" 'any("a\tb \"q\" \\ back" in l for s in d["sections"] for l in s["lines"])'
+MULTILINE_DIR="$WORK/"$'two\nlines'
+mkdir -p "$MULTILINE_DIR"
+JOUT="$(bash "$RECON" --json "$MULTILINE_DIR" 2>&1)"
+jcheck "--json: directory with a newline stays in the dir field" 'd["dir"].endswith(r"/two\nlines")'
+CDPATH_ROOT="$WORK/cdpath"
+mkdir -p "$CDPATH_ROOT/repo"
+OUT="$(cd "$WORK" && CDPATH="$CDPATH_ROOT" bash "$RECON" repo 2>&1)"
+if [[ ${OUT%%$'\n'*} == 'RECON EVIDENCE PACK '* ]]; then
+  ok "text: CDPATH lookup keeps the evidence header first"
+else
+  ko "text: CDPATH lookup keeps the evidence header first"
+fi
+JOUT="$(cd "$WORK" && CDPATH="$CDPATH_ROOT" bash "$RECON" --json repo 2>&1)"
+jcheck "--json: CDPATH lookup keeps the timestamp and directory" 'bool(d["generated_at"]) and d["dir"].endswith("/cdpath/repo")'
 JOUT="$(bash "$RECON" --json "$WORK/does-not-exist" 2>/dev/null)"; rc=$?
 if [ "$rc" -ne 0 ] && [ -z "$JOUT" ]; then ok "--json: bad dir => non-zero exit, no partial JSON"; else ko "--json: bad dir => non-zero exit, no partial JSON (rc=$rc)"; fi
 

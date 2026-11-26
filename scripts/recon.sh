@@ -82,7 +82,8 @@ if [ "${1:-}" = "--trusted-git-metadata" ]; then
   shift
 fi
 REPO="${1:-.}"
-cd "$REPO" 2>/dev/null || { echo "ERROR: cannot cd to '$REPO'" >&2; exit 1; }
+# CDPATH can make cd print the resolved directory before the pack header.
+cd -- "$REPO" >/dev/null 2>&1 || { printf 'ERROR: cannot cd to %q\n' "$REPO" >&2; exit 1; }
 
 EXCL="--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=vendor --exclude-dir=dist --exclude-dir=build --exclude-dir=__pycache__ --exclude-dir=.venv"
 # Key may carry a suffix (AWS_SECRET_ACCESS_KEY, GITHUB_TOKEN), a closing quote
@@ -90,7 +91,13 @@ EXCL="--exclude-dir=.git --exclude-dir=node_modules --exclude-dir=vendor --exclu
 KEYVAL_REGEX='(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[A-Za-z0-9_]*["'\'']?[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9/+_.-]{12,}'
 
 section() { printf '\n== %s ==\n' "$1"; }
-status()  { echo "STATUS: $*"; }
+status() { printf 'STATUS: %s\n' "$*"; }
+# Reserve record prefixes for the emitters above. Remove terminal control
+# bytes before classifying evidence lines, while preserving tabs and newlines.
+evidence_lines() {
+  LC_ALL=C tr -d '\000-\010\013-\037\177' |
+    LC_ALL=C sed -E 's/^[[:blank:]]*(RECON EVIDENCE PACK|dir: |contract: |== |-- |STATUS: )/| &/'
+}
 # grep_status <rc> — grep exits 0 (match) / 1 (no match) / 2 (error).
 grep_status() {
   if [ "$1" -le 1 ]; then status "ok"
@@ -212,13 +219,17 @@ find_named() {
 }
 
 echo "RECON EVIDENCE PACK — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-echo "dir: $(pwd)"
+# Keep path metadata on one line, including paths that contain line breaks.
+display_dir=$PWD
+display_dir=${display_dir//\\/\\\\}
+display_dir=${display_dir//$'\n'/\\n}
+printf 'dir: %s\n' "$(printf '%s' "$display_dir" | evidence_lines)"
 echo "contract: every section ends with STATUS: ok | failed | skipped — only 'ok' evidence may be cited with confidence Alta"
 
 section "COMMIT / REF"
 if has_git; then
-  git rev-parse HEAD
-  git describe --tags --always 2>/dev/null || true
+  git rev-parse HEAD 2>/dev/null | evidence_lines
+  git describe --tags --always 2>/dev/null | evidence_lines
   status "ok"
 else
   skip_git " — no history-based checks available"
@@ -227,13 +238,13 @@ fi
 section "STACK MANIFESTS (depth <= 3)"
 manifest_list=$(find_named 3 package.json pyproject.toml setup.py requirements.txt go.mod \
   Cargo.toml composer.json Gemfile pom.xml build.gradle Makefile Dockerfile docker-compose.yml)
-if [ -n "$manifest_list" ]; then printf '%s\n' "$manifest_list"; else echo "none detected"; fi
+if [ -n "$manifest_list" ]; then printf '%s\n' "$manifest_list" | evidence_lines; else echo "none detected"; fi
 status "ok (depth <= 3; vendored/build dirs excluded)"
 
 section "AI/AGENT & PLUGIN ARTIFACTS (depth <= 4)"
 artifacts=$(find_named 4 SKILL.md AGENTS.md CLAUDE.md GEMINI.md .cursorrules .cursor/rules \
   mcp.json .mcp.json manifest.json plugin.json .claude-plugin .github/copilot-instructions.md)
-if [ -n "$artifacts" ]; then printf '%s\n' "$artifacts"; else echo "none detected"; fi
+if [ -n "$artifacts" ]; then printf '%s\n' "$artifacts" | evidence_lines; else echo "none detected"; fi
 status "ok (depth <= 4; vendored/build dirs excluded)"
 
 section "TREE (2 levels, capped at 80 entries)"
@@ -242,7 +253,7 @@ find . -maxdepth 2 \
   -not -path './.git' -not -path './.git/*' \
   -not -path './node_modules' -not -path './node_modules/*' \
   -not -path './.venv' -not -path './.venv/*' \
-  | sort | head -80
+  | sort | head -80 | evidence_lines
 status "ok"
 
 section "SIZE"
@@ -253,7 +264,7 @@ status "ok"
 section "LARGEST SOURCE FILES (KB, top 10, lockfiles excluded)"
 find . -type f -not -path './.git/*' -not -path './node_modules/*' \
      -not -name '*.lock' -not -name 'package-lock.json' -not -name 'yarn.lock' \
-     -exec du -k {} + 2>/dev/null | sort -rn | head -10
+     -exec du -k {} + 2>/dev/null | sort -rn | head -10 | evidence_lines
 status "ok"
 
 section "GIT HOTSPOTS (churn, last 6 months, top 15)"
@@ -264,7 +275,7 @@ if has_git; then
     $1 ~ /^R/ { cur = ($3 in final) ? final[$3] : $3; final[$2] = cur; n[cur]++; next }
     NF >= 2   { cur = ($2 in final) ? final[$2] : $2; n[cur]++ }
     END       { for (f in n) printf "%4d %s\n", n[f], f }' \
-    | sort -k1,1rn -k2,2 | head -15
+    | sort -k1,1rn -k2,2 | head -15 | evidence_lines
   status "ok (renames followed)"
 else
   skip_git ""
@@ -272,8 +283,8 @@ fi
 
 section "RECENT COMMITS (15)"
 if has_git; then
-  if recent=$(git --no-pager log --no-show-signature --oneline -15); then
-    printf '%s\n' "$recent" | mask_secrets
+  if recent=$(git --no-pager log --no-show-signature --oneline -15 2>/dev/null); then
+    printf '%s\n' "$recent" | mask_secrets | evidence_lines
     status "ok"
   else
     status "failed (git log failed)"
@@ -286,14 +297,14 @@ section "TODO/FIXME/HACK DENSITY"
 todo=$(grep -rniE '\b(TODO|FIXME|HACK|XXX)\b' $EXCL . 2>/dev/null); rc=$?
 echo "total occurrences: $(printf '%s' "$todo" | grep -c .)"
 echo "sample lines (top 10 — discard self-referential/doc mentions before counting as debt):"
-[ -n "$todo" ] && printf '%s\n' "$todo" | head -10 | mask_secrets
+[ -n "$todo" ] && printf '%s\n' "$todo" | head -10 | mask_secrets | evidence_lines
 grep_status "$rc"
 
 section "SECRET HEURISTICS (candidates only — verify manually, Rule 6)"
 # Values are masked (see mask_secrets) so secrets never land in the agent's context.
 raw=$(grep -rniE "$KEYVAL_REGEX" $EXCL . 2>/dev/null); rc=$?
 hits=$(printf '%s\n' "$raw" | head -10 | mask_secrets); unset raw
-if [ -n "$hits" ]; then echo "$hits"; else echo "no obvious hits (heuristic, not proof of absence)"; fi
+if [ -n "$hits" ]; then printf '%s\n' "$hits" | evidence_lines; else echo "no obvious hits (heuristic, not proof of absence)"; fi
 grep_status "$rc"
 
 section "DEPENDENCY AUDIT (one STATUS per detected manifest)"
@@ -305,7 +316,7 @@ run_audit() {
   label=$1; shift
   echo "-- $label (tail 15) --"
   out=$("$@" 2>&1); rc=$?
-  printf '%s\n' "$out" | tail -15
+  printf '%s\n' "$out" | tail -15 | evidence_lines
   if [ "$rc" -eq 0 ]; then
     echo "STATUS: ok (exit 0)"
   elif printf '%s\n' "$out" | grep -qiE 'vulnerabilit' \
